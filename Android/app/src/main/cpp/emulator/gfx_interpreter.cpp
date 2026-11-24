@@ -6135,6 +6135,7 @@ case 0xF5: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG
 
                             "G_DL SKIP: dead target 0x%08X (first 8 bytes zero)", raw_addr);
 
+                        depth--;
                         break;
 
                     }
