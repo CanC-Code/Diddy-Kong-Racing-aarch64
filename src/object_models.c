@@ -770,41 +770,85 @@ s32 model_init_normals(ObjectModel *model) {
     Vec3f *v06;
     s16 *v0;
     s16 vx, vy, vz;
+    s32 maxNormals;
+    s32 maxVerts;
+    s32 maxTris;
+    s32 numBatches;
 
-    batches = model->batches;
+    if (model == NULL) {
+        return 1;
+    }
+
     model->normals = NULL;
+    batches = model->batches;
+    numBatches = model->numberOfBatches;
+    maxVerts = model->numberOfVertices;
+    maxTris = model->numberOfTriangles;
 
-    k = 0;
-    for (i = 0; i < model->numberOfBatches; i++) {
-        if (batches[i].miscData != BATCH_VTX_COL || (batches[i].flags & RENDER_ENVMAP)) {
-            k += batches[i + 1].verticesOffset - batches[i].verticesOffset;
+    if (batches == NULL || numBatches <= 0 || maxVerts <= 0 || maxTris <= 0) {
+        return 1;
+    }
+
+    for (i = 0; i < numBatches; i++) {
+        s32 vStart = batches[i].verticesOffset;
+        s32 vEnd = batches[i + 1].verticesOffset;
+        s32 fStart = batches[i].facesOffset;
+        s32 fEnd = batches[i + 1].facesOffset;
+        if (vStart < 0 || vEnd < vStart || vEnd > maxVerts ||
+            fStart < 0 || fEnd < fStart || fEnd > maxTris) {
+            return 1;
         }
     }
 
-    if (k > 0) {
+    k = 0;
+    for (i = 0; i < numBatches; i++) {
+        if (batches[i].miscData != BATCH_VTX_COL || (batches[i].flags & RENDER_ENVMAP)) {
+            s32 delta = (s32)batches[i + 1].verticesOffset - (s32)batches[i].verticesOffset;
+            if (delta < 0 || (s32)k + delta > maxVerts) {
+                return 1;
+            }
+            k += (s16)delta;
+        }
+    }
+
+    maxNormals = (s32)k;
+    if (maxNormals > 0) {
         vertices = model->vertices;
         triangles = model->triangles;
+        if (vertices == NULL || triangles == NULL) {
+            return 1;
+        }
 
-        floatNorms = (Vec3f *) mempool_alloc(model->numberOfTriangles * sizeof(Vec3f), COLOUR_TAG_ORANGE);
+        floatNorms = (Vec3f *) mempool_alloc(maxTris * sizeof(Vec3f), COLOUR_TAG_ORANGE);
         if (floatNorms == NULL) {
             return 1;
         }
 
-        normals = (Vec3s *) mempool_alloc(k * sizeof(Vec3s), COLOUR_TAG_ORANGE);
+        normals = (Vec3s *) mempool_alloc(maxNormals * sizeof(Vec3s), COLOUR_TAG_ORANGE);
         if (normals == NULL) {
             mempool_free(floatNorms);
             return 1;
         }
 
-        // Calculate vertex normals and store them as floating point.
-        for (i = 0; i < model->numberOfBatches; i++) {
+        for (i = 0; i < numBatches; i++) {
             vertOffset = batches[i].verticesOffset;
             for (j = batches[i].facesOffset; j < batches[i + 1].facesOffset; j++) {
                 f32 sp70[3];
                 f32 sp64[3];
                 f32 sp58[3];
+                if (j < 0 || j >= maxTris) {
+                    mempool_free(floatNorms);
+                    mempool_free(normals);
+                    return 1;
+                }
                 for (k = 0; k < 3; k++) {
-                    a2 = triangles[j].verticesArray[k + 1] + vertOffset;
+                    s32 vIdx = (s32)triangles[j].verticesArray[k + 1] + (s32)vertOffset;
+                    if (vIdx < 0 || vIdx >= maxVerts) {
+                        mempool_free(floatNorms);
+                        mempool_free(normals);
+                        return 1;
+                    }
+                    a2 = (s16)vIdx;
                     sp70[k] = vertices[a2].x;
                     sp64[k] = vertices[a2].y;
                     sp58[k] = vertices[a2].z;
@@ -823,7 +867,7 @@ s32 model_init_normals(ObjectModel *model) {
             }
         }
 
-        v0 = (s16 *) mempool_alloc(model->numberOfVertices * sizeof(s16), COLOUR_TAG_ORANGE);
+        v0 = (s16 *) mempool_alloc(maxVerts * sizeof(s16), COLOUR_TAG_ORANGE);
         if (v0 == NULL) {
             mempool_free(floatNorms);
             mempool_free(normals);
@@ -832,8 +876,14 @@ s32 model_init_normals(ObjectModel *model) {
 
         s6 = 0;
 
-        for (i = 0; i < model->numberOfBatches; i++) {
+        for (i = 0; i < numBatches; i++) {
             for (l = batches[i].verticesOffset; l < batches[i + 1].verticesOffset; l++) {
+                if (l < 0 || l >= maxVerts) {
+                    mempool_free(floatNorms);
+                    mempool_free(normals);
+                    mempool_free(v0);
+                    return 1;
+                }
                 if (batches[i].miscData < 0xFE) {
                     a2 = -1;
                     vx = vertices[l].x;
@@ -844,7 +894,8 @@ s32 model_init_normals(ObjectModel *model) {
                         if (batches[i].miscData == batches[q].miscData) {
                             a0 = batches[q].verticesOffset;
                             while (((q == i && a0 < l) || (q != i && a0 < batches[q + 1].verticesOffset)) && a2 < 0) {
-                                if (vx == vertices[a0].x && vy == vertices[a0].y && vz == vertices[a0].z) {
+                                if (a0 >= 0 && a0 < maxVerts &&
+                                    vx == vertices[a0].x && vy == vertices[a0].y && vz == vertices[a0].z) {
                                     a2 = v0[a0];
                                 }
                                 a0++;
@@ -867,14 +918,14 @@ s32 model_init_normals(ObjectModel *model) {
                         if (batches[q].flags & RENDER_ENVMAP) {
                             a0 = batches[q].verticesOffset;
                             while (((q == i && a0 < l) || (q != i && a0 < batches[q + 1].verticesOffset)) && a2 < 0) {
-                                if (vx == vertices[a0].x && vy == vertices[a0].y && vz == vertices[a0].z) {
+                                if (a0 >= 0 && a0 < maxVerts &&
+                                    vx == vertices[a0].x && vy == vertices[a0].y && vz == vertices[a0].z) {
                                     a2 = v0[a0];
                                 }
                                 a0++;
                             }
                         }
                     }
-
                     if (a2 < 0) {
                         v0[l] = s6++;
                     } else {
@@ -886,7 +937,14 @@ s32 model_init_normals(ObjectModel *model) {
             }
         }
 
-        v06 = (Vec3f *) mempool_alloc(s6 * sizeof(Vec3f), COLOUR_TAG_ORANGE);
+        if (s6 < 0 || (s32)s6 > maxVerts) {
+            mempool_free(floatNorms);
+            mempool_free(normals);
+            mempool_free(v0);
+            return 1;
+        }
+
+        v06 = (Vec3f *) mempool_alloc((s6 > 0 ? s6 : 1) * sizeof(Vec3f), COLOUR_TAG_ORANGE);
         if (v06 == NULL) {
             mempool_free(floatNorms);
             mempool_free(normals);
@@ -900,18 +958,26 @@ s32 model_init_normals(ObjectModel *model) {
             v06[k].z = 0.0f;
         }
 
-        for (i = 0; i < model->numberOfBatches; i++) {
+        for (i = 0; i < numBatches; i++) {
             if (batches[i].miscData != BATCH_VTX_COL || (batches[i].flags & RENDER_ENVMAP)) {
                 vertOffset = batches[i].verticesOffset;
                 for (j = batches[i].facesOffset; j < batches[i + 1].facesOffset; j++) {
+                    if (j < 0 || j >= maxTris) {
+                        mempool_free(floatNorms);
+                        mempool_free(normals);
+                        mempool_free(v0);
+                        mempool_free(v06);
+                        return 1;
+                    }
                     for (k = 0; k < 3; k++) {
-                        a2 = triangles[j].verticesArray[k + 1] + vertOffset;
-                        a2 = v0[a2];
-
-                        if (a2 >= 0) {
-                            v06[a2].x += floatNorms[j].x;
-                            v06[a2].y += floatNorms[j].y;
-                            v06[a2].z += floatNorms[j].z;
+                        s32 vIdx = (s32)triangles[j].verticesArray[k + 1] + (s32)vertOffset;
+                        if (vIdx >= 0 && vIdx < maxVerts) {
+                            a2 = v0[vIdx];
+                            if (a2 >= 0 && (s32)a2 < (s32)s6) {
+                                v06[a2].x += floatNorms[j].x;
+                                v06[a2].y += floatNorms[j].y;
+                                v06[a2].z += floatNorms[j].z;
+                            }
                         }
                     }
                 }
@@ -928,9 +994,9 @@ s32 model_init_normals(ObjectModel *model) {
         }
 
         a0 = 0;
-        for (k = 0; k < model->numberOfVertices; k++) {
+        for (k = 0; k < maxVerts; k++) {
             a2 = v0[k];
-            if (a2 >= 0) {
+            if (a2 >= 0 && (s32)a2 < (s32)s6 && (s32)a0 < maxNormals) {
                 normals[a0].x = v06[a2].x;
                 normals[a0].y = v06[a2].y;
                 normals[a0].z = v06[a2].z;
