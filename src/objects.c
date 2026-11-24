@@ -4615,22 +4615,32 @@ s32 get_first_active_object(s32 *retObjCount) {
     s32 minIndex, maxIndex;
     s32 breakLoop;
 
-    *retObjCount = gObjectCount;
-    if (gFirstActiveObjectId != 0) {
+    if (retObjCount != NULL) {
+        *retObjCount = (gObjectCount > 0) ? gObjectCount : 0;
+    }
+    if (gObjPtrList == NULL || gObjectCount <= 0) {
+        return 0;
+    }
+    if (gFirstActiveObjectId != 0 &&
+        gFirstActiveObjectId >= 0 &&
+        gFirstActiveObjectId < gObjectCount) {
         // Already sorted
         return gFirstActiveObjectId;
     }
 
-    i = gObjectListStart;
+    i = (gObjectListStart >= 0 && gObjectListStart < gObjectCount) ? gObjectListStart : 0;
     j = gObjectCount - 1;
     minIndex = i;
     maxIndex = j;
 
-    while (i <= j) {
+    while (i <= j && i >= 0 && j < gObjectCount) {
         breakLoop = 0;
-        while (i <= maxIndex && breakLoop == 0) {
-            if (!(gObjPtrList[i]->trans.flags & OBJ_FLAGS_PARTICLE)) {
-                if (gObjPtrList[i]->header->flags & HEADER_FLAGS_UNK_0001) {
+        while (i <= maxIndex && i < gObjectCount && breakLoop == 0) {
+            Object *objI = gObjPtrList[i];
+            if (objI == NULL || objI->header == NULL) {
+                i++;
+            } else if (!(objI->trans.flags & OBJ_FLAGS_PARTICLE)) {
+                if (objI->header->flags & HEADER_FLAGS_UNK_0001) {
                     i++;
                 } else {
                     // Break the loop if neither OBJ_FLAGS_PARTICLE nor bit 1 in header->flags is set
@@ -4642,11 +4652,14 @@ s32 get_first_active_object(s32 *retObjCount) {
         }
 
         breakLoop = 0;
-        while (j >= minIndex && breakLoop == 0) {
-            if (gObjPtrList[j]->trans.flags & OBJ_FLAGS_PARTICLE) {
+        while (j >= minIndex && j >= 0 && breakLoop == 0) {
+            Object *objJ = gObjPtrList[j];
+            if (objJ == NULL || objJ->header == NULL) {
+                j--;
+            } else if (objJ->trans.flags & OBJ_FLAGS_PARTICLE) {
                 // Break the loop if OBJ_FLAGS_PARTICLE is set
                 breakLoop = -1;
-            } else if (!(gObjPtrList[j]->header->flags & HEADER_FLAGS_UNK_0001)) {
+            } else if (!(objJ->header->flags & HEADER_FLAGS_UNK_0001)) {
                 j--;
             } else {
                 // Break the loop if bit 1 in header->flags is set
@@ -4654,13 +4667,15 @@ s32 get_first_active_object(s32 *retObjCount) {
             }
         }
 
-        if (i < j) {
+        if (i < j && i >= 0 && j < gObjectCount) {
             // Swap active and inactive objects
             Object *tempObject = gObjPtrList[i];
             gObjPtrList[i] = gObjPtrList[j];
             gObjPtrList[j] = tempObject;
             i++;
             j--;
+        } else {
+            break;
         }
     }
 

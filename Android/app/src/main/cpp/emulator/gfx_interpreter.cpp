@@ -2350,7 +2350,9 @@ static void Cmd_Vtx(GfxCommand cmd) {
     if (is_dkr) {
         s_dkrVtxWritePtr = load_base + n;
         if (s_dkrVtxWritePtr > 256) s_dkrVtxWritePtr = 256;
-        s_rdp.dmemVertexCount = s_dkrVtxWritePtr;
+        if (s_rdp.dmemVertexCount < (int)s_dkrVtxWritePtr) {
+            s_rdp.dmemVertexCount = (int)s_dkrVtxWritePtr;
+        }
         { static int _vtxw = 0; if (_vtxw++ < 40)
             __android_log_print(ANDROID_LOG_ERROR, "BKA-VTXDKR-WRITE",
                 "n=%u v0=%u base=%u writePtr=%u dmemVtx=%d",
