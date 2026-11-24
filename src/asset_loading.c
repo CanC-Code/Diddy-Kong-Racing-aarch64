@@ -51,15 +51,30 @@ void pi_init(void) {
     osSendMesg(&gDmaMutex, (OSMesg) 1, OS_MESG_NOBLOCK);
 #endif
 
-    // Embedded LUT: 208 bytes from splat (assets.lut.bin), no ROM dependency.
-    assetTableSize = G_EMBEDDED_LUT_SIZE;
+    extern uint8_t *gN64_ROM_Base;
+    assetTableSize = (gBkaLutSize > 0 && gBkaLutSize <= G_EMBEDDED_LUT_SIZE) ? gBkaLutSize : G_EMBEDDED_LUT_SIZE;
     gAssetsLookupTable = (u32 *) mempool_alloc_safe(assetTableSize, COLOUR_TAG_GREY);
     if (gAssetsLookupTable == NULL) {
         __android_log_print(ANDROID_LOG_ERROR, "DKR-PI", "FATAL: mempool_alloc_safe returned NULL for LUT");
         return;
     }
     mempool_locked_set((u8 *) gAssetsLookupTable);
-    memcpy(gAssetsLookupTable, g_embedded_lut, assetTableSize);
+    if (gN64_ROM_Base != NULL && (size_t)gBkaLutRomOffset + assetTableSize <= (128u * 1024u * 1024u)) {
+        u32 first_word = __builtin_bswap32(*(const u32 *)(gN64_ROM_Base + gBkaLutRomOffset));
+        if (first_word == 0x32u) {
+            memcpy(gAssetsLookupTable, gN64_ROM_Base + gBkaLutRomOffset, assetTableSize);
+            __android_log_print(ANDROID_LOG_INFO, "DKR-PI",
+                "Loaded LUT (%u bytes) from ROM at 0x%X (assets at 0x%X)",
+                assetTableSize, gBkaLutRomOffset, gBkaAssetsRomOffset);
+        } else {
+            memcpy(gAssetsLookupTable, g_embedded_lut, assetTableSize);
+            __android_log_print(ANDROID_LOG_WARN, "DKR-PI",
+                "ROM LUT at 0x%X had count=%u (expected 50); using embedded LUT fallback",
+                gBkaLutRomOffset, first_word);
+        }
+    } else {
+        memcpy(gAssetsLookupTable, g_embedded_lut, assetTableSize);
+    }
 
     // Byteswap BE -> LE in place
     for (u32 i = 0; i < assetTableSize / 4; i++) {
@@ -87,7 +102,10 @@ u32 *asset_table_load(u32 assetIndex) {
     osRecvMesg(&gDmaMutex, &msg, OS_MESG_BLOCK);
 #endif
 
-    if (gAssetsLookupTable[0] < assetIndex) {
+    if (gAssetsLookupTable == NULL || gAssetsLookupTable[0] < assetIndex) {
+#if VERSION >= VERSION_79
+        osSendMesg(&gDmaMutex, (OSMesg) 1, OS_MESG_NOBLOCK);
+#endif
         return NULL;
     }
     assetIndex++;

@@ -282,6 +282,10 @@ void mempool_free_queue_clear(void) {
  * If a slot is found, free it.
  */
 void mempool_free_addr(u8 *address) {
+#ifdef PORT
+    free((void *) address);
+    return;
+#endif
     s32 slotIndex;
     s32 poolIndex;
     MemoryPool *pool;
@@ -363,6 +367,10 @@ void mempool_free_queue(void *dataAddress) {
  * Return 1 if successful, otherwise return 0.
  */
 s32 mempool_locked_set(u8 *address) {
+#ifdef PORT
+    (void) address;
+    return 1;
+#endif
     s32 slotIndex;
     MemoryPoolSlot *slot;
     MemoryPool *pool;
@@ -393,6 +401,10 @@ s32 mempool_locked_set(u8 *address) {
  * Unset that flag and return 1 if so, otherwise 0.
  */
 s32 mempool_locked_unset(u8 *address) {
+#ifdef PORT
+    (void) address;
+    return 1;
+#endif
     s32 slotIndex;
     MemoryPoolSlot *slot;
     MemoryPool *pool;
@@ -570,11 +582,20 @@ UNUSED u8 *align8(u8 *address) {
  * Official name: mmAlign4
  */
 UNUSED u8 *align4(u8 *address) {
+#ifdef PORT
+    uintptr_t addr = (uintptr_t) address;
+    uintptr_t rem = addr & 0x3;
+    if (rem > 0) {
+        addr = (addr - rem) + 4;
+    }
+    return (u8 *) addr;
+#else
     s32 remainder = (s32) address & 0x3;
     if (remainder > 0) {
         address = (u8 *) (((s32) address - remainder) + 4);
     }
     return address;
+#endif
 }
 
 /**

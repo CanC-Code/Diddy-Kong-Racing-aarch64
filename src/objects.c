@@ -69,7 +69,7 @@ extern void dkr_bswap_u32_buf(u32 *buf, u32 count);
 #define BOOST_TRI_COUNT 8
 
 #ifndef _ALIGN16
-#define _ALIGN16(a) (((u32) (a) & ~0xF) + 0x10)
+#define _ALIGN16(a) ((uintptr_t)((((uintptr_t) (a)) & ~(uintptr_t)0xF) + 0x10))
 #endif
 
 #define SET_SHIFT_AND_MASK(varShift, varMask, x) \
@@ -367,9 +367,9 @@ void racerfx_alloc(s32 numberOfVertices, s32 numberOfTriangles) {
 
     gBoostTris[0] = (Triangle *) mempool_alloc_safe(
         ((numberOfTriangles * sizeof(Triangle)) + (numberOfVertices * sizeof(Vertex))) * 2, COLOUR_TAG_BLUE);
-    gBoostTris[1] = (Triangle *) ((u32) gBoostTris[0] + numberOfTriangles * sizeof(Triangle));
-    gBoostVerts[0] = (Vertex *) ((u32) gBoostTris[1] + numberOfTriangles * sizeof(Triangle));
-    gBoostVerts[1] = (Vertex *) ((u32) gBoostVerts[0] + numberOfVertices * sizeof(Vertex));
+    gBoostTris[1] = (Triangle *) ((uintptr_t) gBoostTris[0] + numberOfTriangles * sizeof(Triangle));
+    gBoostVerts[0] = (Vertex *) ((uintptr_t) gBoostTris[1] + numberOfTriangles * sizeof(Triangle));
+    gBoostVerts[1] = (Vertex *) ((uintptr_t) gBoostVerts[0] + numberOfVertices * sizeof(Vertex));
     gBoostVertCount = numberOfVertices;
     gNumOfBoostVerts = 0;
     gBoostTriCount = numberOfTriangles;
@@ -1911,17 +1911,17 @@ UNUSED void func_8000E4E8(s32 index) {
 }
 
 UNUSED s32 func_8000E558(Object *arg0) {
-    s32 temp_v0;
-    s32 new_var, new_var2;
+    uintptr_t temp_v0;
+    uintptr_t new_var, new_var2;
     if (arg0->level_entry == NULL) {
         return TRUE;
     }
-    temp_v0 = (s32) arg0->level_entry;
-    new_var2 = (s32) gObjectMapSpawnList[0];
+    temp_v0 = (uintptr_t) arg0->level_entry;
+    new_var2 = (uintptr_t) gObjectMapSpawnList[0];
     if ((temp_v0 >= new_var2) && (((gObjectMapSize[0] * 8) + new_var2) >= temp_v0)) {
         return FALSE;
     }
-    new_var = (s32) gObjectMapSpawnList[1];
+    new_var = (uintptr_t) gObjectMapSpawnList[1];
     // Why even bother with this check?
     if (temp_v0 >= new_var && temp_v0 <= ((gObjectMapSize[1] * 8) + new_var)) {
         return TRUE;
@@ -1932,8 +1932,8 @@ UNUSED s32 func_8000E558(Object *arg0) {
 void func_8000E5EC(LevelObjectEntryCommon *arg0) {
     u8 *src;
     u8 *dst;
-    s32 end;
-    s32 sp30[2];
+    uintptr_t end;
+    uintptr_t sp30[2];
     s32 size;
     s32 i;
     s32 pad;
@@ -1941,12 +1941,12 @@ void func_8000E5EC(LevelObjectEntryCommon *arg0) {
 
     size = arg0->size & 0x3F;
 
-    sp30[0] = (s32) gObjectMapSpawnList[0] + gObjectMapSize[0];
-    sp30[1] = (s32) gObjectMapSpawnList[1] + gObjectMapSize[1];
+    sp30[0] = (uintptr_t) gObjectMapSpawnList[0] + (uintptr_t) gObjectMapSize[0];
+    sp30[1] = (uintptr_t) gObjectMapSpawnList[1] + (uintptr_t) gObjectMapSize[1];
 
-    if ((s32) arg0 >= (s32) gObjectMapSpawnList[0] && (s32) arg0 < sp30[0]) {
+    if ((uintptr_t) arg0 >= (uintptr_t) gObjectMapSpawnList[0] && (uintptr_t) arg0 < sp30[0]) {
         sp1C = 0;
-    } else if ((s32) arg0 >= (s32) gObjectMapSpawnList[1] && (s32) arg0 < sp30[1]) {
+    } else if ((uintptr_t) arg0 >= (uintptr_t) gObjectMapSpawnList[1] && (uintptr_t) arg0 < sp30[1]) {
         sp1C = 1;
     }
 #ifdef AVOID_UB
@@ -1956,21 +1956,21 @@ void func_8000E5EC(LevelObjectEntryCommon *arg0) {
 #endif
 
     dst = (u8 *) arg0;
-    src = (u8 *) ((s32) arg0 + size);
+    src = (u8 *) ((uintptr_t) arg0 + (uintptr_t) size);
     end = sp30[sp1C];
-    if ((u32) src < (u32) end) {
+    if ((uintptr_t) src < end) {
         do {
             *dst++ = *src++;
-        } while ((u32) src != (u32) end);
+        } while ((uintptr_t) src != end);
     }
     gObjectMapSize[sp1C] -= size;
 
     for (i = 0; i < gObjectCount; i++) {
         Object *obj = gObjPtrList[i];
         if (obj != NULL && obj->level_entry != NULL) {
-            if ((s32) arg0 < (s32) obj->level_entry && (s32) obj->level_entry < end) {
-                obj->level_entry = (LevelObjectEntry *) ((s32) obj->level_entry - size);
-            } else if ((s32) arg0 == (s32) obj->level_entry) {
+            if ((uintptr_t) arg0 < (uintptr_t) obj->level_entry && (uintptr_t) obj->level_entry < end) {
+                obj->level_entry = (LevelObjectEntry *) ((uintptr_t) obj->level_entry - (uintptr_t) size);
+            } else if ((uintptr_t) arg0 == (uintptr_t) obj->level_entry) {
                 obj->level_entry = NULL;
             }
         }
@@ -1987,7 +1987,7 @@ void func_8000E79C(u8 *arg0, u8 *arg1) {
     u8 *var_a2;
     s32 i;
     s32 j;
-    s32 k;
+    uintptr_t k;
 
     arg0Value = arg0[1] & 0x3F;
     arg0Value2 = arg0Value;
@@ -1999,8 +1999,8 @@ void func_8000E79C(u8 *arg0, u8 *arg1) {
     if (arg1Value < arg0Value2) {
         var_a2 = arg0 + arg1Value;
         var_t0 = arg0 + arg0Value2;
-        k = (u32) var_a3;
-        while (((u32) var_t0) < (u32) k) {
+        k = (uintptr_t) var_a3;
+        while (((uintptr_t) var_t0) < k) {
             *var_a2 = *var_t0;
             var_a2++;
             var_t0++;
@@ -2009,8 +2009,8 @@ void func_8000E79C(u8 *arg0, u8 *arg1) {
         var_a2 = var_a3 + arg1Value;
         var_a2 -= arg0Value2;
         var_t0 = var_a3;
-        k = (u32) (arg0 + arg1Value);
-        while ((u32) k < ((u32) var_a2)) {
+        k = (uintptr_t) (arg0 + arg1Value);
+        while (k < ((uintptr_t) var_a2)) {
             var_a2--;
             var_t0--;
             *var_a2 = *var_t0;
@@ -2355,7 +2355,7 @@ Object *spawn_object(LevelObjectEntryCommon *entry, s32 spawnFlags) {
         address += curObj->header->numLightSources * 4;
     }
 
-    sizeOfobj = (s32) address - (s32) curObj;
+    sizeOfobj = (s32) ((uintptr_t) address - (uintptr_t) curObj);
     prevObj = curObj;
     curObj = mempool_alloc_pool((MemoryPoolSlot *) gObjectMemoryPool, sizeOfobj);
     if (curObj == NULL) {
@@ -3063,7 +3063,7 @@ void obj_destroy(Object *obj, s32 arg1) {
         racer_sound_free(obj);
         for (j = 0; j < gObjectCount; j++) {
             if ((gObjPtrList[j]->trans.flags & OBJ_FLAGS_PARTICLE) &&
-                ((s32) gObjPtrList[j]->level_entry == (s32) obj)) {
+                ((uintptr_t) gObjPtrList[j]->level_entry == (uintptr_t) obj)) {
                 gObjPtrList[j]->level_entry = NULL;
             }
             if (gObjPtrList[j]->behaviorId == BHV_WEAPON_2 || gObjPtrList[j]->behaviorId == BHV_FLY_COIN ||
@@ -10461,18 +10461,18 @@ s32 get_object_property_size(Object *obj, void *obj64) {
             ret = sizeof(Object_MidiChannelSet);
             break;
         case BHV_BUTTERFLY:
-            temp_v0 = 0x10 - ((s32) obj64 & 0xF);
-            obj->butterfly = (Object_Butterfly *) ((s32) obj64 + temp_v0);
+            temp_v0 = 0x10 - ((uintptr_t) obj64 & 0xF);
+            obj->butterfly = (Object_Butterfly *) ((uintptr_t) obj64 + temp_v0);
             ret = (temp_v0 + sizeof(Object_Butterfly));
             break;
         case BHV_FISH:
-            temp_v0 = 0x10 - ((s32) obj64 & 0xF);
-            obj->fish = (Object_Fish *) ((s32) obj64 + temp_v0);
+            temp_v0 = 0x10 - ((uintptr_t) obj64 & 0xF);
+            obj->fish = (Object_Fish *) ((uintptr_t) obj64 + temp_v0);
             ret = (temp_v0 + sizeof(Object_Fish));
             break;
         case BHV_CHARACTER_FLAG:
-            temp_v0 = 0x10 - ((s32) obj64 & 0xF);
-            obj->characterFlagModel = (CharacterFlagModel *) ((s32) obj64 + temp_v0);
+            temp_v0 = 0x10 - ((uintptr_t) obj64 & 0xF);
+            obj->characterFlagModel = (CharacterFlagModel *) ((uintptr_t) obj64 + temp_v0);
             ret = (temp_v0 + sizeof(CharacterFlagModel));
             break;
         case BHV_UNK_5E:

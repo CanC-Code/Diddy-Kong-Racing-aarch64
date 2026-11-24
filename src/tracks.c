@@ -504,7 +504,7 @@ void void_init(s32 viewportCount) {
 
         D_8011D47C = (s8 *) ptr;
         // Align by 8
-        ptr = (u8 *) ((s32) (ptr + sp2C + 8) & ~7);
+        ptr = (u8 *) (((uintptr_t) (ptr + sp2C + 8)) & ~(uintptr_t)7);
 
         for (i = 0; i < viewportCount; i++) {
             gVoidMesh[i].tris[0] = (Triangle *) ptr;
@@ -3003,7 +3003,9 @@ __android_log_print(ANDROID_LOG_ERROR, "DKR-TRACK", "gt: rlm-returned");
     mempool_free(gLevelModelTable); // Done with the level models table, so free it.
 __android_log_print(ANDROID_LOG_ERROR, "DKR-TRACK", "gt: table-freed");
 
+#ifndef PORT
     mdl = (s32) gCurrentLevelModel;
+#endif
 
     #ifndef PORT
     LOCAL_OFFSET_TO_RAM_ADDRESS(TextureInfo *, gCurrentLevelModel->textures);

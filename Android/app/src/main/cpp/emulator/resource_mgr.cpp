@@ -332,6 +332,47 @@ extern "C" {
 /**
  * Initializes the Resource Manager in Absolute Self-Building Mode and parses decompressed.us.v10.yaml.
  */
+extern "C" {
+extern uint32_t gBkaLutSize;
+extern uint32_t gBkaLutRomOffset;
+extern uint32_t gBkaAssetsRomOffset;
+}
+
+static void bka_match_rom_lut_offsets(const uint8_t* rom, size_t rom_size) {
+    struct RomLutMap {
+        char id[4];
+        uint8_t rev;
+        uint32_t lut_off;
+        uint32_t assets_off;
+        const char* tag;
+    };
+    static const RomLutMap kMap[] = {
+        {{'N','D','K','E'}, 0x00, 0xECB60u, 0xECC30u, "US v77"},
+        {{'N','D','K','E'}, 0x01, 0xED0E0u, 0xED1B0u, "US v80"},
+        {{'N','D','K','P'}, 0x00, 0xECBF0u, 0xECCC0u, "PAL v77"},
+        {{'N','D','K','P'}, 0x01, 0xED170u, 0xED240u, "PAL v80"},
+        {{'N','D','K','J'}, 0x00, 0xEE5D0u, 0xEE6A0u, "JPN v79"},
+    };
+    if (!rom || rom_size < 0x40 + 0xD0) {
+        return;
+    }
+    for (const auto& m : kMap) {
+        if (memcmp(rom + 0x3B, m.id, 4) == 0 && rom[0x3F] == m.rev) {
+            if (static_cast<size_t>(m.lut_off) + 0xD0 <= rom_size) {
+                gBkaLutRomOffset = m.lut_off;
+                gBkaAssetsRomOffset = m.assets_off;
+                gBkaLutSize = 0xD0;
+                LOGI("ResourceMgr: Matched ROM %s -> lut=0x%X assets=0x%X",
+                     m.tag, gBkaLutRomOffset, gBkaAssetsRomOffset);
+                return;
+            }
+        }
+    }
+    LOGW("ResourceMgr: Unrecognized ROM header %.4s rev=0x%02X (size=%zu); keeping lut=0x%X assets=0x%X",
+         reinterpret_cast<const char*>(rom + 0x3B), rom[0x3F], rom_size,
+         gBkaLutRomOffset, gBkaAssetsRomOffset);
+}
+
 void ResourceMgr_Init(const char* assetDir) {
     if (!assetDir) {
         LOGE("ResourceMgr: Received an uninitialized null pointer for assetDir configuration.");
@@ -396,6 +437,7 @@ void ResourceMgr_Init(const char* assetDir) {
     size_t bytesRead = fread(gN64_ROM_Base, 1, g_romSize, f);
     LOGI("ResourceMgr: Verification validation sequence populated %zu bytes into ROM base block.", bytesRead);
     fclose(f);
+    bka_match_rom_lut_offsets(gN64_ROM_Base, bytesRead);
 
     // --- Load splat YAML segment boundaries ---
     char manifestPath[512];

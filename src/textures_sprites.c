@@ -754,7 +754,7 @@ TextureHeader *load_texture(s32 id) {
         // Load the compressed texture at the end of the allocated block,
         // so it can be decompressed into the entire block
         compressedStart = (((uintptr_t) tex + uncompressedSize) - assetSize);
-        compressedStart = (s32) compressedStart - (s32) compressedStart % 16;
+        compressedStart = (uintptr_t) compressedStart - ((uintptr_t) compressedStart % 16);
         asset_load(assetSection, compressedStart, assetOffset, assetSize);
         gzip_inflate((u8 *) (compressedStart + sizeof(TextureHeader)), (u8 *) tex);
         assetSize = uncompressedSize - sizeof(TextureHeader);
@@ -1108,7 +1108,7 @@ void material_set_blinking_lights(Gfx **dList, TextureHeader *texture_list, u32 
     u16 *mblock;
     u16 *tblock;
     if (texture_index != 0 && texture_index < (texture_list->numOfTextures * 256)) {
-        texture_list = (TextureHeader *) ((s32) texture_list + ((texture_index >> 16) * texture_list->textureSize));
+        texture_list = (TextureHeader *) ((uintptr_t) texture_list + ((texture_index >> 16) * texture_list->textureSize));
     }
     mblock = (u16 *) (texture_list + 1);
     tblock = mblock + 0x400;

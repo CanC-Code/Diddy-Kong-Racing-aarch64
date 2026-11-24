@@ -238,7 +238,9 @@ void audio_init(OSSched *sc) {
         gSeqLengthTable = (u32 *) mempool_alloc_safe((gSequenceTable->seqCount) * 4, COLOUR_TAG_CYAN);
 
         for (i = 0; i < gSequenceTable->seqCount; i++) {
+#ifndef PORT
             pad = (u32) (gSequenceTable + 8 + i * 8); // Fakematch
+#endif
             gSeqLengthTable[i] = gSequenceTable->seqArray[i].len;
             if (gSeqLengthTable[i] & 1) {
                 gSeqLengthTable[i]++;

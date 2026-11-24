@@ -182,7 +182,7 @@ s32 gfxtask_run_xbus(Gfx *dlBegin, Gfx *dlEnd, UNUSED s32 recvMesg) {
     dkrtask->task.type = M_GFXTASK;
     dkrtask->task.flags = OS_TASK_DP_WAIT;
     dkrtask->task.ucode_boot = (u64 *) rspbootTextStart;
-    dkrtask->task.ucode_boot_size = (s32) ((s32) rspbootTextEnd - (s32) rspbootTextStart);
+    dkrtask->task.ucode_boot_size = (s32) ((uintptr_t) rspbootTextEnd - (uintptr_t) rspbootTextStart);
     dkrtask->task.ucode = (u64 *) rspF3DDKRXbusStart;
     dkrtask->task.ucode_data = (u64 *) rspF3DDKRDataXbusStart;
     dkrtask->task.ucode_data_size = SP_UCODE_DATA_SIZE;
@@ -226,7 +226,7 @@ UNUSED void gfxtask_run_xbus2(Gfx *dlBegin, Gfx *dlEnd, s32 recvMesg) {
     dkrtask->task.type = M_GFXTASK;
     dkrtask->task.flags = OS_TASK_DP_WAIT;
     dkrtask->task.ucode_boot = (u64 *) rspbootTextStart;
-    dkrtask->task.ucode_boot_size = (s32) ((s32) rspbootTextEnd - (s32) rspbootTextStart);
+    dkrtask->task.ucode_boot_size = (s32) ((uintptr_t) rspbootTextEnd - (uintptr_t) rspbootTextStart);
     dkrtask->task.ucode = (u64 *) rspF3DDKRXbusStart;
     dkrtask->task.ucode_data = (u64 *) rspF3DDKRDataXbusStart;
     dkrtask->task.ucode_data_size = SP_UCODE_DATA_SIZE;
@@ -279,7 +279,7 @@ UNUSED void gfxtask_run_fifo(Gfx *dlBegin, Gfx *dlEnd, s32 recvMesg) {
     dkrtask->task.data_size = (s32) (dlEnd - dlBegin) * sizeof(Gfx);
     dkrtask->task.type = M_GFXTASK;
     dkrtask->task.flags = OS_TASK_DP_WAIT;
-    dkrtask->task.ucode_boot_size = (s32) ((s32) rspbootTextEnd - (s32) rspbootTextStart);
+    dkrtask->task.ucode_boot_size = (s32) ((uintptr_t) rspbootTextEnd - (uintptr_t) rspbootTextStart);
     dkrtask->task.ucode = (u64 *) rspF3DDKRFifoStart;
     dkrtask->task.ucode_data = (u64 *) rspF3DDKRDataFifoStart;
     dkrtask->task.ucode_data_size = SP_UCODE_DATA_SIZE;
@@ -332,7 +332,7 @@ UNUSED void gfxtask_run_fifo2(Gfx *dlBegin, Gfx *dlEnd, s32 recvMesg) {
     dkrtask->task.type = M_GFXTASK;
     dkrtask->task.flags = OS_TASK_DP_WAIT;
     dkrtask->task.ucode_boot = (u64 *) rspbootTextStart;
-    dkrtask->task.ucode_boot_size = (s32) ((s32) rspbootTextEnd - (s32) rspbootTextStart);
+    dkrtask->task.ucode_boot_size = (s32) ((uintptr_t) rspbootTextEnd - (uintptr_t) rspbootTextStart);
     dkrtask->task.ucode = (u64 *) rspF3DDKRFifoStart;
     dkrtask->task.ucode_data = (u64 *) rspF3DDKRDataFifoStart;
     dkrtask->task.ucode_data_size = SP_UCODE_DATA_SIZE;
