@@ -318,9 +318,22 @@ void main_game_loop(void) {
     if (gScreenStatus == MESG_SKIP_BUFFER_SWAP) {
         gCurrDisplayList = gDisplayLists[gSPTaskNum];
         rsp_segment(&gCurrDisplayList, SEGMENT_MAIN, 0x00000000);
+#ifdef PORT
+        {
+            extern uint8_t *gN64_RDRAM;
+            s32 fbOff = (gN64_RDRAM && gVideoCurrFramebuffer)
+                ? (s32)((uintptr_t)gVideoCurrFramebuffer - (uintptr_t)gN64_RDRAM) : 0;
+            s32 zbOff = (gN64_RDRAM && gVideoLastDepthBuffer)
+                ? (s32)((uintptr_t)gVideoLastDepthBuffer - (uintptr_t)gN64_RDRAM) : 0;
+            rsp_segment(&gCurrDisplayList, SEGMENT_FRAMEBUFFER, fbOff);
+            rsp_segment(&gCurrDisplayList, SEGMENT_ZBUFFER, zbOff);
+            rsp_segment(&gCurrDisplayList, SEGMENT_FRAMEBUFFER_OFFSET, fbOff - VI_OFFSET); // Unused
+        }
+#else
         rsp_segment(&gCurrDisplayList, SEGMENT_FRAMEBUFFER, (s32) gVideoCurrFramebuffer);
         rsp_segment(&gCurrDisplayList, SEGMENT_ZBUFFER, (s32) gVideoLastDepthBuffer);
         rsp_segment(&gCurrDisplayList, SEGMENT_FRAMEBUFFER_OFFSET, (s32) gVideoCurrFramebuffer - VI_OFFSET); // Unused
+#endif
     }
     if (gDrawFrameTimer == 0) {
         __android_log_print(ANDROID_LOG_ERROR, "DKR-GFX", "before gfxtask_run_xbus task=%d", gSPTaskNum);
@@ -348,9 +361,22 @@ void main_game_loop(void) {
 
     __android_log_print(ANDROID_LOG_ERROR, "DKR-LOOP", "before rsp_segment x4");
     rsp_segment(&gCurrDisplayList, SEGMENT_MAIN, 0x00000000);
+#ifdef PORT
+    {
+        extern uint8_t *gN64_RDRAM;
+        s32 fbOff = (gN64_RDRAM && gVideoLastFramebuffer)
+            ? (s32)((uintptr_t)gVideoLastFramebuffer - (uintptr_t)gN64_RDRAM) : 0;
+        s32 zbOff = (gN64_RDRAM && gVideoLastDepthBuffer)
+            ? (s32)((uintptr_t)gVideoLastDepthBuffer - (uintptr_t)gN64_RDRAM) : 0;
+        rsp_segment(&gCurrDisplayList, SEGMENT_FRAMEBUFFER, fbOff);
+        rsp_segment(&gCurrDisplayList, SEGMENT_ZBUFFER, zbOff);
+        rsp_segment(&gCurrDisplayList, SEGMENT_FRAMEBUFFER_OFFSET, fbOff - VI_OFFSET); // Unused
+    }
+#else
     rsp_segment(&gCurrDisplayList, SEGMENT_FRAMEBUFFER, (s32) gVideoLastFramebuffer);
     rsp_segment(&gCurrDisplayList, SEGMENT_ZBUFFER, (s32) gVideoLastDepthBuffer);
     rsp_segment(&gCurrDisplayList, SEGMENT_FRAMEBUFFER_OFFSET, (s32) gVideoLastFramebuffer - VI_OFFSET); // Unused
+#endif
     __android_log_print(ANDROID_LOG_ERROR, "DKR-LOOP", "before rsp_init/rdp_init");
     rsp_init(&gCurrDisplayList);
     rdp_init(&gCurrDisplayList);
@@ -453,7 +479,13 @@ void main_game_loop(void) {
             framebufferSize = (s32) ((SCREEN_WIDTH * SCREEN_HEIGHT * 2) * 1.1f);
         }
         __android_log_print(ANDROID_LOG_ERROR, "DKR-POST", "before dmacopy_doubleword src=%p dst=%p size=%d", (void*)gVideoLastFramebuffer, (void*)gVideoCurrFramebuffer, framebufferSize);
+#ifdef PORT
+        if (gVideoLastFramebuffer && gVideoCurrFramebuffer && framebufferSize > 0) {
+            memcpy(gVideoCurrFramebuffer, gVideoLastFramebuffer, (size_t)framebufferSize);
+        }
+#else
         dmacopy_doubleword(gVideoLastFramebuffer, gVideoCurrFramebuffer, (u32) gVideoCurrFramebuffer + framebufferSize);
+#endif
         __android_log_print(ANDROID_LOG_ERROR, "DKR-POST", "after dmacopy_doubleword");
     }
     // tempLogicUpdateRate will be set to a value 2 or higher, based on the framerate.
