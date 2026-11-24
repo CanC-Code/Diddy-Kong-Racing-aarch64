@@ -76,15 +76,6 @@ void level_global_init(void) {
     gTempAssetTable = (s32 *) asset_table_load(ASSET_LEVEL_HEADERS_TABLE);
     if (gTempAssetTable != NULL) dkr_bswap_u32_buf((u32*)gTempAssetTable, asset_table_size(ASSET_LEVEL_HEADERS_TABLE) / sizeof(u32));
     __android_log_print(ANDROID_LOG_ERROR, "DKR-LEVEL", "level_load: table=%p [0..7]=%d %d %d %d %d %d %d %d", (void*)gTempAssetTable, gTempAssetTable[0], gTempAssetTable[1], gTempAssetTable[2], gTempAssetTable[3], gTempAssetTable[4], gTempAssetTable[5], gTempAssetTable[6], gTempAssetTable[7]);
-    /* ARM64: BE offset table needs byteswapping; terminator -1 survives bswap. */
-    if (gTempAssetTable != NULL) {
-        s32 _n = 0;
-        while (_n < 4096 && gTempAssetTable[_n] != -1) _n++;
-        for (s32 _i = 0; _i <= _n; _i++) {
-            gTempAssetTable[_i] = (s32) __builtin_bswap32((u32) gTempAssetTable[_i]);
-        }
-        __android_log_print(ANDROID_LOG_ERROR, "DKR-LVL", "gTempAssetTable bswapped, %d entries", _n);
-    }
     i = 0;
     while (i < 16) {
         gRaceTypeCountTable[i++] = 0;

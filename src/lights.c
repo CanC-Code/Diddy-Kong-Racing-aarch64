@@ -119,14 +119,18 @@ ObjectLight *light_add_from_level_object_entry(Object *obj, LevelObjectEntry_Rgb
             levelHeader = level_header();
             if (levelHeader->unk74[lightEntry->unk1C] != 0xFFFFFFFFu) {
                 light->unk44_asset = (MiscAssetObjectHeader24 *) gUnk74Resolved[lightEntry->unk1C];
-                light->unk48 = light->unk44_asset->unk0;
-                light->unk4A = 0;
-                light->unk4C = 0;
-                light->unk4E = 0;
-                light->unk44 = light->unk44_asset->unk14;
-                // clang-format off
-                for (i = 0; i < light->unk48; i++) { light->unk4E += light->unk44[i].unk4; } // Must be on one line!
-                // clang-format on
+                if (light->unk44_asset != NULL) {
+                    light->unk48 = light->unk44_asset->unk0;
+                    light->unk4A = 0;
+                    light->unk4C = 0;
+                    light->unk4E = 0;
+                    light->unk44 = light->unk44_asset->unk14;
+                    if (light->unk44 != NULL) {
+                        // clang-format off
+                        for (i = 0; i < light->unk48; i++) { light->unk4E += light->unk44[i].unk4; } // Must be on one line!
+                        // clang-format on
+                    }
+                }
             }
         }
         light->radius = lightEntry->radius;

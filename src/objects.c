@@ -1571,13 +1571,21 @@ void track_setup_racers(Vehicle vehicle, u32 entranceID, s32 playerCount) {
             racerEntry->common.z = spawnZ[0];
             racerEntry->angleY = spawnAngle[0];
             curObj = spawn_object((LevelObjectEntryCommon *) racerEntry, 1);
-            curObj->level_entry = NULL;
-            curObj->behaviorId = BHV_TIMETRIAL_GHOST;
-            curObj->shadow->scale = 0.01f;
-            curObj->interactObj->flags = INTERACT_FLAGS_NONE;
-            gGhostObjPlayer = curObj;
-            curRacer = gGhostObjPlayer->racer;
-            curRacer->transparency = 96;
+            if (curObj != NULL) {
+                curObj->level_entry = NULL;
+                curObj->behaviorId = BHV_TIMETRIAL_GHOST;
+                if (curObj->shadow != NULL) {
+                    curObj->shadow->scale = 0.01f;
+                }
+                if (curObj->interactObj != NULL) {
+                    curObj->interactObj->flags = INTERACT_FLAGS_NONE;
+                }
+                gGhostObjPlayer = curObj;
+                if (gGhostObjPlayer->racer != NULL) {
+                    curRacer = gGhostObjPlayer->racer;
+                    curRacer->transparency = 96;
+                }
+            }
         }
         // Spawn staff ghost
         if (timetrial_init_staff_ghost(level_id())) {
@@ -1590,13 +1598,21 @@ void track_setup_racers(Vehicle vehicle, u32 entranceID, s32 playerCount) {
             racerEntry->common.z = spawnZ[0];
             racerEntry->angleY = spawnAngle[0];
             curObj = spawn_object((LevelObjectEntryCommon *) racerEntry, 1);
-            curObj->level_entry = NULL;
-            curObj->behaviorId = BHV_TIMETRIAL_GHOST;
-            curObj->shadow->scale = 0.01f;
-            curObj->interactObj->flags = INTERACT_FLAGS_NONE;
-            gGhostObjStaff = curObj;
-            curRacer = gGhostObjStaff->racer;
-            curRacer->transparency = 96;
+            if (curObj != NULL) {
+                curObj->level_entry = NULL;
+                curObj->behaviorId = BHV_TIMETRIAL_GHOST;
+                if (curObj->shadow != NULL) {
+                    curObj->shadow->scale = 0.01f;
+                }
+                if (curObj->interactObj != NULL) {
+                    curObj->interactObj->flags = INTERACT_FLAGS_NONE;
+                }
+                gGhostObjStaff = curObj;
+                if (gGhostObjStaff->racer != NULL) {
+                    curRacer = gGhostObjStaff->racer;
+                    curRacer->transparency = 96;
+                }
+            }
         }
     }
 
