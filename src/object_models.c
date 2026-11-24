@@ -70,7 +70,11 @@ void allocate_object_model_pools(void) {
     // Antipiracy measure
     checksum = 0;
     for (i = 0; i < gRenderSceneFuncLength; i++) {
+#ifdef PORT
+        checksum += *(const u8 *) (((uintptr_t) &render_scene) + (uintptr_t)i);
+#else
         checksum += *(u8 *) (((s32) &render_scene) + i);
+#endif
     }
     if (checksum != gRenderSceneChecksum) {
         drm_vehicle_traction();

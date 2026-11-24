@@ -1304,13 +1304,33 @@ void track_tex_anim(s32 updateRate) {
     TriangleBatchInfo *batch;
     s32 temp;
 
+#ifdef PORT
+    if (!gCurrentLevelModel || !gCurrentLevelModel->segments || !gCurrentLevelModel->textures) {
+        return;
+    }
+#endif
     segment = gCurrentLevelModel->segments;
     for (segmentNumber = 0; segmentNumber < gCurrentLevelModel->numberOfSegments; segmentNumber++) {
         batch = segment[segmentNumber].batches;
+#ifdef PORT
+        if (!batch) {
+            continue;
+        }
+#endif
         for (batchNumber = 0; batchNumber < segment[segmentNumber].numberOfBatches; batchNumber++) {
             if (batch[batchNumber].flags & RENDER_TEX_ANIM) {
                 if (batch[batchNumber].textureIndex != 0xFF) {
+#ifdef PORT
+                    if (batch[batchNumber].textureIndex >= gCurrentLevelModel->numberOfTextures) {
+                        continue;
+                    }
+#endif
                     texture = gCurrentLevelModel->textures[batch[batchNumber].textureIndex].texture;
+#ifdef PORT
+                    if (!texture) {
+                        continue;
+                    }
+#endif
                     if (texture->numOfTextures != 0x100 && texture->frameAdvanceDelay) {
                         temp = batch[batchNumber].texOffset << 6;
                         if (batch[batchNumber].flags & RENDER_UNK_80000000) {
@@ -3581,6 +3601,14 @@ void shadow_update(s32 group, s32 waterGroup, s32 updateRate) {
 #endif
         waterEffect = obj->waterEffect;
         shadow = obj->shadow;
+#ifdef PORT
+        if ((uintptr_t)shadow != 0 && ((uintptr_t)shadow < 0x10000ULL || ((uintptr_t)shadow >> 48) != 0)) {
+            shadow = NULL;
+        }
+        if ((uintptr_t)waterEffect != 0 && ((uintptr_t)waterEffect < 0x10000ULL || ((uintptr_t)waterEffect >> 48) != 0)) {
+            waterEffect = NULL;
+        }
+#endif
         if ((obj->trans.flags & OBJ_FLAGS_PARTICLE)) {
             continue;
         }
