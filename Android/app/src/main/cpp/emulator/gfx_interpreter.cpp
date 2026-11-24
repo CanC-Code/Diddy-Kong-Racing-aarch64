@@ -5083,7 +5083,7 @@ if (!g_walker_recover_installed) {
                 } else if (lo == 0x00 && hi != 0x00 && hi_is_g) {
                     /* Mirror: BE reads as NOP, LE is real. */
                     cur_dl_enc = 1;
-                } else                 if (hi_is_g && lo_is_g) {
+                } else if (hi_is_g && lo_is_g) {
                     /* Ambiguous: both byte[0] and byte[3] are valid F3DEX
                      * opcodes.  Default to BE: N64 architecture is big-endian
                      * and F3DEX display lists are defined in BE byte order.
@@ -5093,11 +5093,13 @@ if (!g_walker_recover_installed) {
                      * within the first few commands, since half the DLs
                      * interpreted every opcode as a MOVEWORD-style command
                      * with the real opcode in the wrong byte. */
-                    cur_dl_enc = 1;
+                    c.w0 = __builtin_bswap32(c.w0);
+                    c.w1 = __builtin_bswap32(c.w1);
+                    cur_dl_enc = 2;
                     static int s_amb = 0;
                     if ((s_amb++ % 500) == 0)
                         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-                            "DLENC AMBIG->LE @%p bytes %02X%02X%02X%02X op=0x%02X",
+                            "DLENC AMBIG->BE @%p bytes %02X%02X%02X%02X op=0x%02X",
                             cur, cur[0],cur[1],cur[2],cur[3],
                             (uint8_t)(c.w0 >> 24));
                 } else if (lo_is_g && !hi_is_g) {

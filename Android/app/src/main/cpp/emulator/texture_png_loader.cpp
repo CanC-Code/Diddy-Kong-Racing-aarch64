@@ -148,7 +148,7 @@ static void do_init() {
         size_t p3 = 0, p2 = 0;
         int _retries = 0;
         while (_retries < 30 &&
-               (norm_3d.size() != p3 || norm_2d.size() != p2 || norm_2d.empty())) {
+               (norm_3d.size() != p3 || norm_2d.size() != p2)) {
             p3 = norm_3d.size();
             p2 = norm_2d.size();
             usleep(500000);
@@ -195,9 +195,7 @@ static void ensure_initialized() {
     std::lock_guard<std::mutex> lk(g_init_mutex);
     if (g_initialized.load()) return;
     do_init();
-    if (!g_png_paths_3d.empty() || !g_png_paths_2d.empty()) {
-        g_initialized.store(true);
-    }
+    g_initialized.store(true);
 }
 
 // --- Convert RGBA8 to a 16-bit N64 RGBA5551 word ---
