@@ -1176,7 +1176,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
                 s_rdp.projection[i][j] = (i == j) ? 1.0f : 0.0f;
         }
     }
-    float x = ((float)v->x * (1.0f/32768.0f)), y = ((float)v->y * (1.0f/32768.0f)), z = ((float)v->z * (1.0f/32768.0f));
+    float x = (float)v->x, y = (float)v->y, z = (float)v->z;
     {
         static int s_tv = 0;
         if (s_tv++ < 0) {
@@ -4421,8 +4421,8 @@ static int bka_probe_dl_encoding(uint8_t* ptr) {
             if (s_noend++ < 30)
                 __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "PROBE-ENDDL ptr=%p vote=%d score=%d no G_ENDDL -> %s",
-                    (void*)ptr, _res, score, (score >= 10) ? "keep" : "0");
-            if (score < 10) _res = 0;
+                    (void*)ptr, _res, score, (score >= 18) ? "keep" : "0");
+            if (score < 18) _res = 0;
         }
     }
     return _res;
