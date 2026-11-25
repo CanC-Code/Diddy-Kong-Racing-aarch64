@@ -278,8 +278,9 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
         extern uint8_t *gVideoLastFramebuffer;
         extern uint8_t *gVideoCurrFramebuffer;
         if (gVideoLastFramebuffer) {
-            uint32_t lo = (uint32_t)(uintptr_t)gVideoLastFramebuffer;
-            if (addr >= lo && (uint32_t)(addr - lo) < 0x80000u) {
+            uintptr_t lo = (uintptr_t)gVideoLastFramebuffer;
+            uintptr_t a64 = (uintptr_t)addr;
+            if (a64 >= lo && (a64 - lo) < 0x80000u) {
                 static int s1 = 0; if (s1++ < 5)
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-FBCHECK",
                         "last addr=0x%08X off=0x%X", addr, addr - lo);
@@ -287,8 +288,9 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             }
         }
         if (gVideoCurrFramebuffer) {
-            uint32_t lo = (uint32_t)(uintptr_t)gVideoCurrFramebuffer;
-            if (addr >= lo && (uint32_t)(addr - lo) < 0x80000u) {
+            uintptr_t lo = (uintptr_t)gVideoCurrFramebuffer;
+            uintptr_t a64 = (uintptr_t)addr;
+            if (a64 >= lo && (a64 - lo) < 0x80000u) {
                 static int s2 = 0; if (s2++ < 5)
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-FBCHECK",
                         "curr addr=0x%08X off=0x%X", addr, addr - lo);
@@ -1261,7 +1263,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     // vertex 500 units away is ~500x too large), and every triangle
     // gets clamped to the clip box edge.
     {
-        if (pw <= 0.01f) {
+        if (!(pw > 0.01f)) {
             ox = 0.0f;
             oy = 0.0f;
             oz = 0.0f;
@@ -6006,7 +6008,7 @@ case 0xF5: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG
                     uintptr_t dp = (uintptr_t)dl_ptr;
                     uintptr_t r0 = (uintptr_t)gN64_RDRAM;
                     uintptr_t r1 = r0 + 0x04000000u;
-                    if (!dl_ptr || !r0 || dp < r0 || dp >= r1 || !bka_is_mapped(dl_ptr)) {
+                    if (!dl_ptr || !r0 || dp < r0 || dp >= r1 || !bka_is_mapped(dl_ptr) || !bka_in_rdram(dl_ptr, 16) || !bka_is_readable(dl_ptr)) {
                         dl_ptr = NULL;
                     }
                 }
