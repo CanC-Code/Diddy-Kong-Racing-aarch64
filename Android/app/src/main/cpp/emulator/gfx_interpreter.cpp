@@ -3513,7 +3513,7 @@ static void Matrix_Multiply(BKMatrix result, const BKMatrix a, const BKMatrix b)
 /* BKA_FORCE_IDENTITY: set to 1 to bypass all matrix loading and force
  * identity on both proj and mv. Diagnostic for isolating whether the
  * matrix pipeline is the sole blocker for rasterization. */
-static int g_bka_force_identity = 1;
+static int g_bka_force_identity = 0;
 
 static void bka_recompute_matrices(void) {
     if (g_bka_force_identity) {
