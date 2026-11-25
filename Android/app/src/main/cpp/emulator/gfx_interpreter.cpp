@@ -1261,10 +1261,20 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     // vertex 500 units away is ~500x too large), and every triangle
     // gets clamped to the clip box edge.
     {
-        float inv = (fabsf(pw) > 0.0001f) ? (1.0f / pw) : 0.0f;
-        ox = px * inv;
-        oy = py * inv;
-        oz = pz * inv;
+        if (pw <= 0.01f) {
+            ox = 0.0f;
+            oy = 0.0f;
+            oz = 0.0f;
+        } else {
+            float inv = 1.0f / pw;
+            ox = px * inv;
+            oy = py * inv;
+            oz = pz * inv;
+            if (ox < -16.0f) ox = -16.0f;
+            if (ox >  16.0f) ox =  16.0f;
+            if (oy < -16.0f) oy = -16.0f;
+            if (oy >  16.0f) oy =  16.0f;
+        }
     }
 
     // Viewport transform: NDC [-1,1] → screen [0,FB_WIDTH/HEIGHT]

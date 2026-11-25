@@ -499,6 +499,12 @@ Java_com_dkrwrapper_NativeBridge_updateTexture(JNIEnv*, jclass, jint textureId) 
 
 } // extern "C"
 
+extern "C" {
+unsigned short gVirtualButtons = 0;
+signed char gVirtualStickX = 0;
+signed char gVirtualStickY = 0;
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_dkrwrapper_NativeBridge_setVirtualInput(JNIEnv* env, jclass clazz, jint buttons, jint stickX, jint stickY) {
     gVirtualButtons = (unsigned short)buttons;

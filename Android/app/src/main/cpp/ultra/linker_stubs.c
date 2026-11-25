@@ -156,20 +156,26 @@ unsigned long long gspL3DEX_fifoDataStart[1];
 s32  alSeqGetTicks(void *seq) { return 0; }
 void alSeqSetLoc(void *seq, s32 loc) {}
 void rmonPrintf(const char *fmt, ...) {}
+extern unsigned short gVirtualButtons;
+extern signed char gVirtualStickX;
+extern signed char gVirtualStickY;
+
 s32 osContGetReadData(void *pad) {
-    /* r108: alternate A/0 every frame. r107 constant A → no edge (prev=A,curr=A→0).
-     * Game reads gControllerCurrData.button with XOR edge detection at
-     * src/joypad.c:117 → needs press/release transitions. */
-    static int _frame = 0;
-    _frame++;
-    int _a = (_frame % 2) == 0;
+    /* Read live virtual input set by NativeBridge.setVirtualInput (/input endpoint) */
     if (pad) {
-        ((unsigned short*)pad)[0] = _a ? 0x8000 : 0;
+        unsigned char *p = (unsigned char *)pad;
+        unsigned short btn = gVirtualButtons;
+        signed char sx = gVirtualStickX;
+        signed char sy = gVirtualStickY;
+        ((unsigned short *)p)[0] = btn;
+        p[2] = (unsigned char)sx;
+        p[3] = (unsigned char)sy;
+        p[4] = 0; /* errno = 0 */
         static int _lg = 0;
-        if (_lg++ < 20)
+        if (_lg++ < 30 || btn != 0 || sx != 0 || sy != 0) {
             __android_log_print(ANDROID_LOG_INFO, "BKA_INPUT",
-                "GetReadData f=%d a=%d btn=0x%04x",
-                _frame, _a, ((unsigned short*)pad)[0]);
+                "GetReadData btn=0x%04x sx=%d sy=%d", btn, (int)sx, (int)sy);
+        }
     }
     return 0;
 }
