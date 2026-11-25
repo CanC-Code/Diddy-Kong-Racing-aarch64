@@ -753,10 +753,10 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
             int pair_idx = i * 2 + j / 2;
             int ai_off = pair_idx * 4;
             int af_off = 32 + pair_idx * 4;
-            int16_t int_j1  = (int16_t)(b[ai_off]   | (b[ai_off+1]   << 8));
-            int16_t int_j   = (int16_t)(b[ai_off+2] | (b[ai_off+3]   << 8));
-            int16_t frac_j1 = (int16_t)(b[af_off]   | (b[af_off+1]   << 8));
-            int16_t frac_j  = (int16_t)(b[af_off+2] | (b[af_off+3]   << 8));
+              int16_t int_j1  = (int16_t)((b[ai_off]   << 8) | b[ai_off+1]);
+              int16_t int_j   = (int16_t)((b[ai_off+2] << 8) | b[ai_off+3]);
+              int16_t frac_j1 = (int16_t)((b[af_off]   << 8) | b[af_off+1]);
+              int16_t frac_j  = (int16_t)((b[af_off+2] << 8) | b[af_off+3]);
             (*out)[i][j]   = (float)int_j  + (float)frac_j  / 65536.0f;
             (*out)[i][j+1] = (float)int_j1 + (float)frac_j1 / 65536.0f;
         }
@@ -6002,7 +6002,31 @@ case 0xF5: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG
                             "G_DL DL ptr %p is not in a mapped region", dl_ptr);
                     }
                 }
-                __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                                {
+                    uintptr_t dp = (uintptr_t)dl_ptr;
+                    uintptr_t r0 = (uintptr_t)gN64_RDRAM;
+                    uintptr_t r1 = r0 + 0x04000000u;
+                    if (!dl_ptr || !r0 || dp < r0 || dp >= r1 || !bka_is_mapped(dl_ptr)) {
+                        dl_ptr = NULL;
+                    }
+                }
+                if (!dl_ptr) {
+                    static int s_early_bad_gdl = 0;
+                    if (s_early_bad_gdl++ < 50) {
+                        void* m = bka_lookup_addr_mapping(raw_addr);
+                        __android_log_print(ANDROID_LOG_WARN, "BKA_GFX",
+                            "G_DL: refusing addr=0x%08X (dl_ptr=%p map_lookup=%p) w0=%08X w1=%08X",
+                            raw_addr, dl_ptr, m, c.w0, c.w1);
+                    }
+                    if (++consecutive_bad_gdl > 8) {
+                        __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
+                            "walker: %d consecutive failed G_DLs — bailing (drift past DL end)",
+                            consecutive_bad_gdl);
+                        return;
+                    }
+                    break;
+                }
+__android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     "G_DL RECOGNIZED cur=%p w0=0x%08X w1=0x%08X", cur, c.w0, c.w1);
                 { static int s_stage1 = 0; if (s_stage1++ < 10) LOGV("G_DL S1 dl_ptr=%p", dl_ptr); }
                 static int dl_log_count = 0;
