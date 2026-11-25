@@ -132,38 +132,19 @@ static void bka_sigsegv_handler(int sig, siginfo_t* si, void* uc) {
     uintptr_t lr = (uintptr_t)ctx->uc_mcontext.regs[30];
     uintptr_t page = (uintptr_t)si->si_addr & ~0xFFFULL;
 
-    Dl_info di_pc = {0}, di_lr = {0};
-    dladdr((void*)pc, &di_pc);
-    dladdr((void*)lr, &di_lr);
-
-    const char* pc_name = di_pc.dli_sname ? di_pc.dli_sname : "?";
-    const char* pc_lib  = di_pc.dli_fname ? di_pc.dli_fname : "?";
-    uintptr_t pc_off = di_pc.dli_saddr ? (pc - (uintptr_t)di_pc.dli_saddr) : pc;
-    uintptr_t pc_base = di_pc.dli_fbase ? ((uintptr_t)di_pc.dli_fbase) : 0;
-
-    const char* lr_name = di_lr.dli_sname ? di_lr.dli_sname : "?";
-    const char* lr_lib  = di_lr.dli_fname ? di_lr.dli_fname : "?";
-    uintptr_t lr_off = di_lr.dli_saddr ? (lr - (uintptr_t)di_lr.dli_saddr) : lr;
-    uintptr_t lr_base = di_lr.dli_fbase ? ((uintptr_t)di_lr.dli_fbase) : 0;
-
     static int s_seen = 0;
-    if (s_seen++ < 20)
+    if (s_seen++ < 8)
         __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
-            "SEGVDUMP addr=%p page=0x%lX pc=0x%lX pc_off=0x%lX pc_base=0x%lX pc_sym=%s+0x%lX lib=%s lr=0x%lX lr_off=0x%lX lr_sym=%s+0x%lX",
+            "SEGVDUMP addr=%p page=0x%lX pc=0x%lX lr=0x%lX",
             si->si_addr, (unsigned long)page,
-            (unsigned long)pc, (unsigned long)pc_off, (unsigned long)pc_base,
-            pc_name, (unsigned long)pc_off, pc_lib,
-            (unsigned long)lr, (unsigned long)lr_off,
-            lr_name, (unsigned long)lr_off);
-    { int n = __atomic_load_n(&s_bka_ring_n, __ATOMIC_ACQUIRE); int cnt = (n < BKA_RING_SZ) ? n : BKA_RING_SZ; __android_log_print(ANDROID_LOG_ERROR, "BKA-RING", "ring_n=%d last %d DL commands:", n, cnt); for (int k = 0; k < cnt; k++) { int idx = (n - 1 - k) & (BKA_RING_SZ - 1); __android_log_print(ANDROID_LOG_ERROR, "BKA-RING", "  -%02d cur=%p w0=0x%08X w1=0x%08X op=0x%02X enc=%u", k, (void*)s_bka_ring[idx].dl_cur, s_bka_ring[idx].w0, s_bka_ring[idx].w1, s_bka_ring[idx].op, s_bka_ring[idx].enc); } }
-    (void)page; /* do NOT re-enable; would re-execute the faulting insn and loop */
-    signal(sig, SIG_DFL);
+            (unsigned long)pc, (unsigned long)lr);
+    (void)page;
     raise(sig);
 }
 static void bka_install_watch(void) {
     struct sigaction sa = {0};
     sa.sa_sigaction = bka_sigsegv_handler;
-    sa.sa_flags = SA_SIGINFO;
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_RESETHAND;
     sigaction(SIGSEGV, &sa, nullptr);
 }
 
@@ -2555,6 +2536,11 @@ static void Cmd_Polygon(GfxCommand cmd) {
     }
     if (!_poly_resolved) _poly_resolved = RDP_TranslateAddr(cmd.w1);
     DkrTriangle* tri = (DkrTriangle*)_poly_resolved;
+    if (!tri) return;
+    if (!bka_is_readable((void*)tri) ||
+        !bka_is_readable((void*)((const uint8_t*)tri + (numTris ? (numTris * 16 - 1) : 0)))) {
+        return;
+    }
     {
         static int _pp = 0;
         _pp++;

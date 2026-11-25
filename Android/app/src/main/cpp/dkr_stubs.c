@@ -406,52 +406,31 @@ static void bka_segv_handler(int sig, siginfo_t *info, void *ctx) {
             (unsigned long)uc->uc_mcontext.regs[2],
             (unsigned long)uc->uc_mcontext.regs[3]);
 
-        /* Write full trace to file for offline analysis */
-        FILE* cf = fopen("/data/data/com.dkrwrapper/files/last_crash.txt", "w");
-        if (cf) {
-            fprintf(cf, "sig=%d si_code=%d addr=%p\n",
-                    sig, (int)info->si_code, info->si_addr);
-            fprintf(cf, "pc=0x%lx lr=0x%lx sp=0x%lx fp=0x%lx\n",
-                    (unsigned long)pc, (unsigned long)lr,
-                    (unsigned long)sp, (unsigned long)fp);
-            for (int i = 0; i < 31; i++) {
-                fprintf(cf, "x%d=0x%lx\n", i,
-                        (unsigned long)uc->uc_mcontext.regs[i]);
+        /* Async-signal-safe frame dump (no fopen/fprintf/dladdr in signal handler) */
+        {
+            for (int i = 4; i < 31; i += 2) {
+                __android_log_print(ANDROID_LOG_FATAL, "BKA-CRASH",
+                    "x%d=0x%lx x%d=0x%lx",
+                    i, (unsigned long)uc->uc_mcontext.regs[i],
+                    i + 1, (unsigned long)uc->uc_mcontext.regs[i + 1]);
             }
-            fprintf(cf, "\n=== frame chain ===\n");
-            Dl_info dli;
-            /* PC symbol first */
-            if (dladdr((void*)pc, &dli) && dli.dli_sname) {
-            fprintf(cf, "#0  pc=0x%lx  %s+0x%lx\n",
-                    (unsigned long)pc, dli.dli_sname,
-                    (unsigned long)(pc - (uintptr_t)dli.dli_saddr));
-        } else {
-            fprintf(cf, "#0  pc=0x%lx  ??\n", (unsigned long)pc);
-        }
-
-        // Walk frame pointer chain for backtrace
-        uintptr_t* curr_fp = (uintptr_t*)fp;
-        for (int depth = 1; depth < 16 && curr_fp != NULL; depth++) {
-            uintptr_t prev_fp = curr_fp[0];
-            uintptr_t ret_addr = curr_fp[1];
-            if (ret_addr == 0 || ret_addr < 0x1000) break;
-            
-            if (dladdr((void*)ret_addr, &dli) && dli.dli_sname) {
-                fprintf(cf, "#%d pc=0x%lx %s+0x%lx\n",
-                        depth, (unsigned long)ret_addr,
-                        dli.dli_sname,
-                        (unsigned long)(ret_addr - (uintptr_t)dli.dli_saddr));
-            } else {
-                fprintf(cf, "#%d pc=0x%lx ??\n", depth, (unsigned long)ret_addr);
+            uintptr_t* curr_fp = (uintptr_t*)fp;
+            for (int depth = 1; depth < 12 && curr_fp != NULL; depth++) {
+                if (((uintptr_t)curr_fp & 0x7) != 0) break;
+                uintptr_t prev_fp = curr_fp[0];
+                uintptr_t ret_addr = curr_fp[1];
+                if (ret_addr == 0 || ret_addr < 0x1000) break;
+                __android_log_print(ANDROID_LOG_FATAL, "BKA-CRASH",
+                    "#%d fp=0x%lx ret=0x%lx",
+                    depth, (unsigned long)prev_fp,
+                    (unsigned long)ret_addr);
+                curr_fp = (uintptr_t*)prev_fp;
             }
-            curr_fp = (uintptr_t*)prev_fp;
         }
-        fclose(cf);
     }
-}
-// Re-raise signal so system handler / debuggerd catches it too
-signal(sig, SIG_DFL);
-raise(sig);
+    // Re-raise signal so system handler / debuggerd catches it too
+    signal(sig, SIG_DFL);
+    raise(sig);
 }
 
 #include <signal.h>
@@ -462,7 +441,7 @@ void bka_install_segv_handler(void) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_sigaction = bka_segv_handler;
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_RESETHAND;
     sigemptyset(&sa.sa_mask);
     sigaction(SIGSEGV, &sa, NULL);
     sigaction(SIGABRT, &sa, NULL);
