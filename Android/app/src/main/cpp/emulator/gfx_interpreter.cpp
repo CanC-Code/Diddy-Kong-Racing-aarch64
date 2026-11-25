@@ -6176,12 +6176,8 @@ __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
                     if (probed != 0) {
                         /* Trust the probe when it returns an answer.  Outer
                          * DLs are LE (port-emitted); sub-DLs copied from
-                         * the ROM asset cache are BE (handoff §7).  The
-                         * old parent-first branch forced LE on every
-                         * sub-DL and the walker crashed ~8 commands in. */
+                         * the ROM asset cache are BE (handoff §7). */
                         cur_dl_enc = probed;
-                    } else if (parent_enc != 0) {
-                        cur_dl_enc = parent_enc;
                     } else {
                         static int s_refuse = 0;
                         if (s_refuse++ < 20)
