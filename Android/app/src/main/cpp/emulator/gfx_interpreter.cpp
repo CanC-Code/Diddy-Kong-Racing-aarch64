@@ -5922,7 +5922,8 @@ case 0xF5: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG
                                       ((uint32_t)cur[9] << 16) |
                                       ((uint32_t)cur[10] << 8) |
                                        (uint32_t)cur[11];
-                    if (tag_be != 0) {
+                    uint8_t tseg = (tag_be >> 24) & 0x0F;
+                    if (tag_be != 0 && ((tseg > 0 && tseg < 8) || (tag_be >= 0x80000000u && tag_be < 0x84000000u))) {
                         static int s_tag_use = 0;
                         if (s_tag_use++ < 20)
                             __android_log_print(ANDROID_LOG_ERROR, "BKA_GFX",
@@ -6009,7 +6010,15 @@ case 0xF5: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG
                     __android_log_print(ANDROID_LOG_INFO, "BKA_GFX",
                         "G_DL: addr=0x%08X resolved=%p", raw_addr, dl_ptr);
                 }
-                if (!dl_ptr || !bka_is_mapped(dl_ptr)) {
+                {
+                    uintptr_t dp = (uintptr_t)dl_ptr;
+                    uintptr_t r0 = (uintptr_t)gN64_RDRAM;
+                    uintptr_t r1 = r0 + 0x04000000u;
+                    if (!dl_ptr || !r0 || dp < r0 || dp >= r1 || !bka_is_mapped(dl_ptr)) {
+                        dl_ptr = NULL;
+                    }
+                }
+                if (!dl_ptr) {
                     static int s_nomap = 0;
                     if (s_nomap++ < 50) {
                         void* m = bka_lookup_addr_mapping(raw_addr);
