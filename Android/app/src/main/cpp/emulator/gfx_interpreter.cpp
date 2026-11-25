@@ -1302,6 +1302,14 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     // Viewport transform: NDC [-1,1] → screen [0,FB_WIDTH/HEIGHT]
     *sx = (ox + 1.0f) * 0.5f * (float)FB_WIDTH;
     *sy = (1.0f - oy) * 0.5f * (float)FB_HEIGHT;
+    {
+        static int s_fbk_log = 0;
+        if (s_fbk_log++ < 10) {
+            __android_log_print(ANDROID_LOG_ERROR, "BKA-FBK",
+                "mvid=%d pjid=%d xyz=(%.0f,%.0f,%.0f) pw=%.3f o=(%.3f,%.3f) s=(%.1f,%.1f)",
+                (int)mv_is_id, (int)pj_is_id, x, y, z, pw, ox, oy, *sx, *sy);
+        }
+    }
 
     static int s_off = 0;
     if ((*sx < 0 || *sx > FB_WIDTH || *sy < 0 || *sy > FB_HEIGHT) && s_off++ < 5) {
