@@ -753,10 +753,10 @@ static void Matrix_LoadFromN64(BKMatrix* out, const void* src) {
             int pair_idx = i * 2 + j / 2;
             int ai_off = pair_idx * 4;
             int af_off = 32 + pair_idx * 4;
-              int16_t int_j1  = (int16_t)((b[ai_off]   << 8) | b[ai_off+1]);
-              int16_t int_j   = (int16_t)((b[ai_off+2] << 8) | b[ai_off+3]);
-              int16_t frac_j1 = (int16_t)((b[af_off]   << 8) | b[af_off+1]);
-              int16_t frac_j  = (int16_t)((b[af_off+2] << 8) | b[af_off+3]);
+              int16_t int_j1  = (int16_t)(b[ai_off]   | (b[ai_off+1]   << 8));
+              int16_t int_j   = (int16_t)(b[ai_off+2] | (b[ai_off+3]   << 8));
+              int16_t frac_j1 = (int16_t)(b[af_off]   | (b[af_off+1]   << 8));
+              int16_t frac_j  = (int16_t)(b[af_off+2] | (b[af_off+3]   << 8));
             (*out)[i][j]   = (float)int_j  + (float)frac_j  / 65536.0f;
             (*out)[i][j+1] = (float)int_j1 + (float)frac_j1 / 65536.0f;
         }
