@@ -283,8 +283,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             if (a64 >= lo && (a64 - lo) < 0x80000u) {
                 static int s1 = 0; if (s1++ < 5)
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-FBCHECK",
-                        "last addr=0x%08X off=0x%X", addr, addr - lo);
-                return gVideoLastFramebuffer + (addr - lo);
+                        "last addr=0x%08X off=0x%llX", addr, (unsigned long long)(a64 - lo));
+                return gVideoLastFramebuffer + (a64 - lo);
             }
         }
         if (gVideoCurrFramebuffer) {
@@ -293,8 +293,8 @@ static inline uint8_t* RDP_TranslateAddr(uint32_t addr) {
             if (a64 >= lo && (a64 - lo) < 0x80000u) {
                 static int s2 = 0; if (s2++ < 5)
                     __android_log_print(ANDROID_LOG_ERROR, "BKA-FBCHECK",
-                        "curr addr=0x%08X off=0x%X", addr, addr - lo);
-                return gVideoCurrFramebuffer + (addr - lo);
+                        "curr addr=0x%08X off=0x%llX", addr, (unsigned long long)(a64 - lo));
+                return gVideoCurrFramebuffer + (a64 - lo);
             }
         }
     }
