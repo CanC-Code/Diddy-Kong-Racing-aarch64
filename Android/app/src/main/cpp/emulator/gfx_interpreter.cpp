@@ -1258,6 +1258,26 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
                 ox, oy, oz, ow,
                 px, py, pz, pw);
     }
+    // If matrices are still identity and v has raw s16 spread, map into NDC
+    // instead of collapsing to (0,0) -> (146.0, 108.0) on a 292x216 buffer.
+    bool mv_is_id = (fabsf(s_rdp.modelview[0][0] - 1.0f) < 1e-4f &&
+                     fabsf(s_rdp.modelview[1][1] - 1.0f) < 1e-4f &&
+                     fabsf(s_rdp.modelview[2][2] - 1.0f) < 1e-4f &&
+                     fabsf(s_rdp.modelview[3][3] - 1.0f) < 1e-4f);
+    bool pj_is_id = (fabsf(s_rdp.projection[0][0] - 1.0f) < 1e-4f &&
+                     fabsf(s_rdp.projection[1][1] - 1.0f) < 1e-4f &&
+                     fabsf(s_rdp.projection[2][2] - 1.0f) < 1e-4f &&
+                     fabsf(s_rdp.projection[3][3] - 1.0f) < 1e-4f);
+    if (mv_is_id && pj_is_id && (fabsf(x) > 1.0f || fabsf(y) > 1.0f)) {
+        float denom = fmaxf(2048.0f, fabsf(z) + 1024.0f);
+        ox = x / denom;
+        oy = y / denom;
+        oz = z / denom;
+        if (ox < -16.0f) ox = -16.0f;
+        if (ox >  16.0f) ox =  16.0f;
+        if (oy < -16.0f) oy = -16.0f;
+        if (oy >  16.0f) oy =  16.0f;
+    } else
     // Perspective divide — MUST use clip.w (pw), not view.w (ow).
     // Forgetting this leaves coordinates in clip space (which for a
     // vertex 500 units away is ~500x too large), and every triangle
