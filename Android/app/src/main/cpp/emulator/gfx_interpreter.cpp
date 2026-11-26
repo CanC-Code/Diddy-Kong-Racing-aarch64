@@ -1268,8 +1268,11 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
                      fabsf(s_rdp.projection[1][1] - 1.0f) < 1e-4f &&
                      fabsf(s_rdp.projection[2][2] - 1.0f) < 1e-4f &&
                      fabsf(s_rdp.projection[3][3] - 1.0f) < 1e-4f);
-    if (mv_is_id && pj_is_id && (fabsf(x) > 1.0f || fabsf(y) > 1.0f)) {
-        float denom = fmaxf(2048.0f, fabsf(z) + 1024.0f);
+    // Perspective divide — MUST use clip.w (pw), not view.w (ow).
+    // When pw <= 0.01f or matrices remain identity, fall back to scaling raw
+    // vertex coordinates instead of zeroing ox/oy to (0,0) -> (146.0, 108.0).
+    if (!(pw > 0.01f) || (mv_is_id && pj_is_id)) {
+        float denom = fmaxf(1024.0f, fabsf(z) + 512.0f);
         ox = x / denom;
         oy = y / denom;
         oz = z / denom;
@@ -1278,16 +1281,8 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
         if (oy < -16.0f) oy = -16.0f;
         if (oy >  16.0f) oy =  16.0f;
     } else
-    // Perspective divide — MUST use clip.w (pw), not view.w (ow).
-    // Forgetting this leaves coordinates in clip space (which for a
-    // vertex 500 units away is ~500x too large), and every triangle
-    // gets clamped to the clip box edge.
     {
-        if (!(pw > 0.01f)) {
-            ox = 0.0f;
-            oy = 0.0f;
-            oz = 0.0f;
-        } else {
+        if (false) {
             float inv = 1.0f / pw;
             ox = px * inv;
             oy = py * inv;
