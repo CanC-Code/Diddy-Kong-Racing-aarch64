@@ -1280,18 +1280,15 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
         if (ox >  16.0f) ox =  16.0f;
         if (oy < -16.0f) oy = -16.0f;
         if (oy >  16.0f) oy =  16.0f;
-    } else
-    {
-        if (false) {
-            float inv = 1.0f / pw;
-            ox = px * inv;
-            oy = py * inv;
-            oz = pz * inv;
-            if (ox < -16.0f) ox = -16.0f;
-            if (ox >  16.0f) ox =  16.0f;
-            if (oy < -16.0f) oy = -16.0f;
-            if (oy >  16.0f) oy =  16.0f;
-        }
+    } else {
+        float inv = 1.0f / pw;
+        ox = px * inv;
+        oy = py * inv;
+        oz = pz * inv;
+        if (ox < -16.0f) ox = -16.0f;
+        if (ox >  16.0f) ox =  16.0f;
+        if (oy < -16.0f) oy = -16.0f;
+        if (oy >  16.0f) oy =  16.0f;
     }
 
     // Viewport transform: NDC [-1,1] → screen [0,FB_WIDTH/HEIGHT]
@@ -3550,14 +3547,13 @@ static void bka_recompute_matrices(void) {
                 "identity forced (bypass matrix pipeline)");
         return;
     }
+    int slot = s_dkrActiveSlot;
+    if (slot < 0 || slot > 2) slot = 0;
     for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
-            s_rdp.projection[i][j] = s_dkrMvpSlots[0][i][j];
-    BKMatrix vm;
-    Matrix_Multiply(vm, s_dkrMvpSlots[1], s_dkrMvpSlots[2]);
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
-            s_rdp.modelview[i][j] = vm[i][j];
+        for (int j = 0; j < 4; j++) {
+            s_rdp.modelview[i][j]  = (i == j) ? 1.0f : 0.0f;
+            s_rdp.projection[i][j] = s_dkrMvpSlots[slot][i][j];
+        }
 }
 
 // F3DEX (non-2) matrix flag bits — Banjo-Kazooie
