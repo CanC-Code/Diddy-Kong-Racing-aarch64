@@ -1172,7 +1172,7 @@ static float ComputeClipW(const BKVertex* v) {
     return pw;
 }
 
-static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
+static void TransformVertex(const BKVertex* v, float* sx, float* sy, float* sz = nullptr) {
     {
         // Reject garbage matrices (e.g., the 0x7C6D... load) by checking the diagonal.
         // Valid rotation/scale diagonals are <= ~100.0. Garbage is usually > 10000.
@@ -1305,6 +1305,7 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     // Viewport transform: NDC [-1,1] → screen [0,FB_WIDTH/HEIGHT]
     *sx = (ox + 1.0f) * 0.5f * (float)FB_WIDTH;
     *sy = (1.0f - oy) * 0.5f * (float)FB_HEIGHT;
+    if (sz) *sz = oz;
     {
         static int s_fbk_log = 0;
         if (s_fbk_log++ < 10) {
@@ -2765,10 +2766,10 @@ static void Cmd_Polygon(GfxCommand cmd) {
             }
         }
 
-        float sx0, sy0, sx1, sy1, sx2, sy2;
-        TransformVertex(v0, &sx0, &sy0);
-        TransformVertex(v1, &sx1, &sy1);
-        TransformVertex(v2, &sx2, &sy2);
+        float sx0, sy0, sz0, sx1, sy1, sz1, sx2, sy2, sz2;
+        TransformVertex(v0, &sx0, &sy0, &sz0);
+        TransformVertex(v1, &sx1, &sy1, &sz1);
+        TransformVertex(v2, &sx2, &sy2, &sz2);
         {
             static int _pm = 0;
             if (_pm++ < 8) {
@@ -2792,7 +2793,8 @@ static void Cmd_Polygon(GfxCommand cmd) {
             v2->r, v2->g, v2->b, v2->a,
             tri->uv0u, tri->uv0v,
             tri->uv1u, tri->uv1v,
-            tri->uv2u, tri->uv2v);
+            tri->uv2u, tri->uv2v,
+            sz0, sz1, sz2);
     }
 
     s_rdp.textureEnabled = saved_enabled;

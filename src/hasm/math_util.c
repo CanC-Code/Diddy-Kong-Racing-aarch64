@@ -214,8 +214,12 @@ void mtxf_to_mtx(MtxF *mf, Mtx *m) {
             e2 = FTOFIX32((*mf)[i][j + 1]);
             *ai++ = (e1 & 0xFFFF0000) | ((e2 >> 16) & 0xFFFF);
             *af++ = ((e1 << 16) & 0xFFFF0000) | (e2 & 0xFFFF);
-        
-    { extern int __android_log_print(int, const char*, const char*, ...);
+        }
+    }
+
+    { extern void bka_add_addr_mapping_c(uint32_t key, void *ptr);
+      bka_add_addr_mapping_c((uint32_t)(uintptr_t)m, m);
+      extern int __android_log_print(int, const char*, const char*, ...);
       static int _pk = 0;
       if (_pk++ < 20) {
         unsigned char* _b = (unsigned char*)m;
@@ -224,9 +228,7 @@ void mtxf_to_mtx(MtxF *mf, Mtx *m) {
             (void*)m, (*mf)[0][0], (*mf)[1][1], (*mf)[2][2], (*mf)[3][2],
             _b[0],_b[1],_b[2],_b[3], _b[32],_b[33],_b[34],_b[35]);
       }
-    }
 }
-    }
 }
 #else
 GLOBAL_ASM("asm/math_util/mtxf_to_mtx.s")
