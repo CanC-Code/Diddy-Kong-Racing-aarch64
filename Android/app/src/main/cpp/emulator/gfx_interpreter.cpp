@@ -1658,7 +1658,7 @@ static void Cmd_LoadTile(GfxCommand cmd) {
         sh = (s_rdp.texWidth > 0) ? ((s_rdp.texWidth - 1) << 2) : t.sh;
     }
     if (th == 0) {
-        th = (s_rdp.texHeight > 0) ? ((s_rdp.texHeight - 1) << 2) : ((t.th > 0) ? t.th : sh);
+        th = (t.th > 0) ? t.th : sh;
     }
     
     /* Diagnostic: trace the first 5 copy attempts */
