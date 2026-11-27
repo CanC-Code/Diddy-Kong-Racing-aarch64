@@ -18,6 +18,7 @@ extern "C" volatile int g_bka_pixels_drawn = 0;
 #include <cstring>
 #include <cstdlib>
 #include <cmath>
+#include "ptr_shim.h"
 #include <time.h>
 #include <algorithm>
 
@@ -57,6 +58,15 @@ static int g_bka_task_tri_count = 0;
 /* BKA-DIRTY: set by RasterizeTriangle on pixel write, cleared by
  * swap. Survives task boundary — fills skip if set. */
 extern "C" { volatile int g_bka_fb_dirty = 0; }
+static float s_zbuf[FB_WIDTH * FB_HEIGHT];
+static uint32_t s_zbuf_gen = 0;
+static inline void bka_ensure_zbuf(void) {
+    if (s_zbuf_gen != g_bka_frame_gen || !g_bka_fb_dirty) {
+        for (int i = 0; i < FB_WIDTH * FB_HEIGHT; i++) s_zbuf[i] = 1e30f;
+        s_zbuf_gen = g_bka_frame_gen;
+    }
+}
+
 
 /* DKR MVP slots — declared here so RSP_ProcessGfxTask's task-start reset
  * (around line 629) sees them. Populated by Cmd_Mtx (DKR p3 bits 6-7 =
@@ -878,7 +888,8 @@ static void RasterizeTriangle(
     uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0,
     uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1,
     uint8_t r2, uint8_t g2, uint8_t b2, uint8_t a2,
-    int16_t s0 = 0, int16_t t0 = 0, int16_t s1 = 0, int16_t t1 = 0, int16_t s2 = 0, int16_t t2 = 0)
+    int16_t s0 = 0, int16_t t0 = 0, int16_t s1 = 0, int16_t t1 = 0, int16_t s2 = 0, int16_t t2 = 0,
+    float z0 = 0.5f, float z1 = 0.5f, float z2 = 0.5f)
 {
     {
         static unsigned long s_in = 0, s_out = 0, s_frame = 0;
@@ -952,6 +963,7 @@ static void RasterizeTriangle(
     uint16_t* fb = gVideoCurrFramebuffer
                    ? (uint16_t*)gVideoCurrFramebuffer
                    : (uint16_t*)(gN64_RDRAM + g_active_fb_offset);
+    bka_ensure_zbuf();
     { static int _bfc = 0; if (_bfc++ < 3)
           __android_log_print(ANDROID_LOG_ERROR, "BKA-FBFORCE",
               "walker fb=%p (curr=%p)", (void*)fb, (void*)gVideoCurrFramebuffer); }
@@ -1029,7 +1041,19 @@ static void RasterizeTriangle(
             g_bka_pixels_drawn++;
             { static int s_px = 0; if (s_px++ < 500) __android_log_print(ANDROID_LOG_ERROR, "BKA-RAST", "PIXWRITE #%d y=%d x=%d rgb=(%d,%d,%d) rgb565=0x%04X fb=%p rdr=%p ofs=0x%X idx=%d", s_px, (int)y, (int)x, r, g, b, RGBA8_TO_RGB565(r,g,b), (void*)&fb[y*FB_WIDTH+x], (void*)gN64_RDRAM, g_active_fb_offset, (int)(y*FB_WIDTH+x)); }
                 bka_guard_write(&fb[y * FB_WIDTH + x], 2, "Raster.fb");
-                { *(volatile uint16_t *)&fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b); _px_written++; }
+                {
+                    float _fx = (float)x + 0.5f, _fy = (float)y + 0.5f;
+                    float _w0 = ((x1-_fx)*(y2-_fy) - (x2-_fx)*(y1-_fy)) * t_invArea;
+                    float _w1 = ((x2-_fx)*(y0-_fy) - (x0-_fx)*(y2-_fy)) * t_invArea;
+                    float _w2 = 1.0f - _w0 - _w1;
+                    float _pz = _w0*z0 + _w1*z1 + _w2*z2;
+                    int _idx = y * FB_WIDTH + x;
+                    if (_pz <= s_zbuf[_idx]) {
+                        s_zbuf[_idx] = _pz;
+                        *(volatile uint16_t *)&fb[_idx] = RGBA8_TO_RGB565(r, g, b);
+                        _px_written++;
+                    }
+                }
             }
         }
     }
@@ -1074,7 +1098,19 @@ static void RasterizeTriangle(
                     g = (uint8_t)(((int)g * tex[1]) / 255);
                     b = (uint8_t)(((int)b * tex[2]) / 255);
                 }
-                { *(volatile uint16_t *)&fb[y * FB_WIDTH + x] = RGBA8_TO_RGB565(r, g, b); _px_written++; }
+                {
+                    float _fx = (float)x + 0.5f, _fy = (float)y + 0.5f;
+                    float _w0 = ((x1-_fx)*(y2-_fy) - (x2-_fx)*(y1-_fy)) * t_invArea;
+                    float _w1 = ((x2-_fx)*(y0-_fy) - (x0-_fx)*(y2-_fy)) * t_invArea;
+                    float _w2 = 1.0f - _w0 - _w1;
+                    float _pz = _w0*z0 + _w1*z1 + _w2*z2;
+                    int _idx = y * FB_WIDTH + x;
+                    if (_pz <= s_zbuf[_idx]) {
+                        s_zbuf[_idx] = _pz;
+                        *(volatile uint16_t *)&fb[_idx] = RGBA8_TO_RGB565(r, g, b);
+                        _px_written++;
+                    }
+                }
             }
         }
     }
@@ -3362,7 +3398,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
                                 }
                             }
                         }
-                        for (int _i = 0; _i < 5; _i++) {
+                        for (int _i = 0; _i < (int)(sizeof(_pfx)/sizeof(_pfx[0])); _i++) {
                             uint64_t _c = _px[_i] | (uint64_t)adj;
                             if (bka_is_readable((void*)_c) &&
                                 bka_is_readable((void*)((const uint8_t*)_c + 63)))
@@ -3593,7 +3629,12 @@ static void Cmd_Mtx(GfxCommand cmd) {
         void *src = (void*)bka_lookup_addr_by_low32(cmd.w1);
         if (!src) src = (void*)bka_lookup_addr_by_low32(__builtin_bswap32(cmd.w1));
         if (!src) {
+            src = ptd_resolve_truncated(cmd.w1);
+            if (!src) src = ptd_resolve_truncated(__builtin_bswap32(cmd.w1));
+        }
+        if (!src) {
             static const uint64_t _pfx[] = {
+                0x7000000000ULL, 0x7700000000ULL,
                 0x7B00000000ULL, 0x7D00000000ULL, 0x7E00000000ULL,
                 0x7F00000000ULL, 0ULL,
             };

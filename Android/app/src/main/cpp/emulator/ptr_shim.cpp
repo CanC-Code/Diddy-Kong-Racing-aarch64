@@ -47,3 +47,20 @@ int ptd_suspect(void *ptr, const char *context) {
     pthread_mutex_unlock(&g_lock);
     return 0;
 }
+
+void *ptd_resolve_truncated(uint32_t ptr32) {
+    if (!ptr32) return NULL;
+    pthread_mutex_lock(&g_lock);
+    for (int i = 0; i < g_count; i++) {
+        uintptr_t low  = g_regions[i].base & 0xFFFFFFFFULL;
+        uintptr_t high = (g_regions[i].base + g_regions[i].size) & 0xFFFFFFFFULL;
+        if (low <= high && (uintptr_t)ptr32 >= low && (uintptr_t)ptr32 <= high) {
+            void *cand = (void *)(g_regions[i].base + (uintptr_t)((uintptr_t)ptr32 - low));
+            pthread_mutex_unlock(&g_lock);
+            return cand;
+        }
+    }
+    pthread_mutex_unlock(&g_lock);
+    return NULL;
+}
+
