@@ -185,22 +185,9 @@ static inline bool bka_is_f3dex_opcode(uint8_t op) {
 // Populated before any RDP command runs, fixing many unmapped address errors.
 static struct RDPStateDefaultSegments {
     RDPStateDefaultSegments() {
-        s_rdp.segmentBase[0x00] = 0x00000000u;
-        s_rdp.segmentBase[0x01] = 0x80000000u;
-        s_rdp.segmentBase[0x02] = 0x80000000u;
-        s_rdp.segmentBase[0x03] = 0x80000000u;
-        s_rdp.segmentBase[0x04] = 0x08000000u;
-        s_rdp.segmentBase[0x05] = 0x08000000u;
-        s_rdp.segmentBase[0x06] = 0x08000000u;
-        s_rdp.segmentBase[0x07] = 0x08000000u;
-        s_rdp.segmentBase[0x08] = 0x08000000u;
-        s_rdp.segmentBase[0x09] = 0x08000000u;
-        s_rdp.segmentBase[0x0A] = 0x08000000u;
-        s_rdp.segmentBase[0x0B] = 0x08000000u;
-        s_rdp.segmentBase[0x0C] = 0x0C000000u;
-        s_rdp.segmentBase[0x0D] = 0x80000000u;
-        s_rdp.segmentBase[0x0E] = 0x80000000u;
-        s_rdp.segmentBase[0x0F] = 0x80000000u;
+        for (int s = 0; s < 16; ++s) {
+            s_rdp.segmentBase[s] = 0x00000000u;
+        }
     }
 } s_rdpDefaultSegments;
 
@@ -657,22 +644,9 @@ static void RDP_InitState() {
 
     // Re-seed segment bases — the memset above wipes them.
     // These match the defaults set by the RDPStateDefaultSegments constructor.
-    s_rdp.segmentBase[0x00] = 0x00000000u;
-    s_rdp.segmentBase[0x01] = 0x80000000u;
-    s_rdp.segmentBase[0x02] = 0x80000000u;
-    s_rdp.segmentBase[0x03] = 0x80000000u;
-    s_rdp.segmentBase[0x04] = 0x08000000u;
-    s_rdp.segmentBase[0x05] = 0x08000000u;
-    s_rdp.segmentBase[0x06] = 0x08000000u;
-    s_rdp.segmentBase[0x07] = 0x08000000u;
-    s_rdp.segmentBase[0x08] = 0x08000000u;
-    s_rdp.segmentBase[0x09] = 0x08000000u;
-    s_rdp.segmentBase[0x0A] = 0x08000000u;
-    s_rdp.segmentBase[0x0B] = 0x08000000u;
-    s_rdp.segmentBase[0x0C] = 0x0C000000u;
-    s_rdp.segmentBase[0x0D] = 0x80000000u;
-    s_rdp.segmentBase[0x0E] = 0x80000000u;
-    s_rdp.segmentBase[0x0F] = 0x80000000u;
+    for (int s = 0; s < 16; ++s) {
+        s_rdp.segmentBase[s] = 0x00000000u;
+    }
 
     // Restore vertices and count.
     memcpy(s_rdp.dmem, saved_dmem, sizeof(saved_dmem));
@@ -3471,9 +3445,16 @@ static void Cmd_MoveWord(GfxCommand cmd) {
         {
             extern int bka_is_readable(void*);
             extern uint8_t *gN64_RDRAM;
+            if (a < 0x04000000u) {
+                s_rdp.segmentBase[segment] = a;
+                return;
+            }
+            if (a >= 0x80000000u && a < 0x84000000u) {
+                s_rdp.segmentBase[segment] = a - 0x80000000u;
+                return;
+            }
             void *recovered = bka_lookup_addr_by_low32(a);
             if (!recovered) {
-                /* Also try KSEG0-stripped form */
                 uint32_t a_sw = __builtin_bswap32(a);
                 recovered = bka_lookup_addr_by_low32(a_sw);
             }
@@ -3489,13 +3470,13 @@ static void Cmd_MoveWord(GfxCommand cmd) {
                     return;
                 }
             }
-            if (a < 0x4000000) {
-                /* Already a physical offset */
+            if (a >= 0x60000000u && a < 0x80000000u) {
                 s_rdp.segmentBase[segment] = a;
                 return;
             }
+            s_rdp.segmentBase[segment] = 0x00000000u;
+            return;
         }
-        s_rdp.segmentBase[segment] = (uintptr_t)a;
         if (segment == 2) {
             __android_log_print(ANDROID_LOG_ERROR, "BKA-SEG2",
                 "SEG2 WRITE base=0x%08X (was 0x%08lX)",
