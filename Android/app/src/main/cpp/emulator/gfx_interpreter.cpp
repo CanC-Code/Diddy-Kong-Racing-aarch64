@@ -58,14 +58,6 @@ static int g_bka_task_tri_count = 0;
 /* BKA-DIRTY: set by RasterizeTriangle on pixel write, cleared by
  * swap. Survives task boundary — fills skip if set. */
 extern "C" { volatile int g_bka_fb_dirty = 0; }
-static float s_zbuf[FB_WIDTH * FB_HEIGHT];
-static uint32_t s_zbuf_gen = 0;
-static inline void bka_ensure_zbuf(void) {
-    if (s_zbuf_gen != g_bka_frame_gen || !g_bka_fb_dirty) {
-        for (int i = 0; i < FB_WIDTH * FB_HEIGHT; i++) s_zbuf[i] = 1e30f;
-        s_zbuf_gen = g_bka_frame_gen;
-    }
-}
 
 
 /* DKR MVP slots — declared here so RSP_ProcessGfxTask's task-start reset
@@ -78,6 +70,15 @@ static uint32_t s_dkrVtxWritePtr = 0;
 int g_bka_last_tri2_count = 0;   /* Fix DD: total TRI2 calls, monotonic */
 static int g_mtx_flag_hist[256] = {0};
 volatile uint32_t g_bka_frame_gen = 0;
+static float s_zbuf[FB_WIDTH * FB_HEIGHT];
+static uint32_t s_zbuf_gen = 0;
+static inline void bka_ensure_zbuf(void) {
+    if (s_zbuf_gen != g_bka_frame_gen || !g_bka_fb_dirty) {
+        for (int i = 0; i < FB_WIDTH * FB_HEIGHT; i++) s_zbuf[i] = 1e30f;
+        s_zbuf_gen = g_bka_frame_gen;
+    }
+}
+
 static int g_bka_task_max_depth = 0;
 static int g_bka_task_pops = 0;
 static int s_rsp_dump_sizes = [](){ LOGV("RDP-SIZE=%zu sizeof dmem=%zu offsetof(dmem)=%zu offsetof(dmemVertexCount)=%zu", sizeof(RDPState), sizeof(s_rdp.dmem), offsetof(RDPState, dmem), offsetof(RDPState, dmemVertexCount)); return 0; }();
@@ -3398,7 +3399,7 @@ static void Cmd_MoveWord(GfxCommand cmd) {
                                 }
                             }
                         }
-                        for (int _i = 0; _i < (int)(sizeof(_pfx)/sizeof(_pfx[0])); _i++) {
+                        for (int _i = 0; _i < 5; _i++) {
                             uint64_t _c = _px[_i] | (uint64_t)adj;
                             if (bka_is_readable((void*)_c) &&
                                 bka_is_readable((void*)((const uint8_t*)_c + 63)))
@@ -3638,7 +3639,7 @@ static void Cmd_Mtx(GfxCommand cmd) {
                 0x7B00000000ULL, 0x7D00000000ULL, 0x7E00000000ULL,
                 0x7F00000000ULL, 0ULL,
             };
-            for (int _i = 0; _i < 5; _i++) {
+            for (int _i = 0; _i < (int)(sizeof(_pfx)/sizeof(_pfx[0])); _i++) {
                 uint64_t _cand = _pfx[_i] | (uint64_t)cmd.w1;
                 if (bka_is_readable((void*)_cand) &&
                     bka_is_readable((void*)((const uint8_t*)_cand + 63))) {
