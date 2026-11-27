@@ -1654,14 +1654,11 @@ static void Cmd_LoadTile(GfxCommand cmd) {
         __android_log_print(ANDROID_LOG_ERROR, "BKA-LTRAW",
             "w0=%08X w1=%08X (forcing sl=tl=0)", cmd.w0, cmd.w1); }
 
-    /* PORT: Rare's B2 (LoadTile) passes garbage w1 (e.g. 0x04000400).
-       We always override sh/th with s_rdp.texWidth set by 0x07. */
-    if (s_rdp.texWidth > 0) {
-        sh = (s_rdp.texWidth - 1) << 2;
-        th = (s_rdp.texWidth - 1) << 2;
-    } else {
-        if (sh == 0) sh = t.sh;
-        if (th == 0) th = t.th;
+    if (sh == 0) {
+        sh = (s_rdp.texWidth > 0) ? ((s_rdp.texWidth - 1) << 2) : t.sh;
+    }
+    if (th == 0) {
+        th = (s_rdp.texHeight > 0) ? ((s_rdp.texHeight - 1) << 2) : ((t.th > 0) ? t.th : sh);
     }
     
     /* Diagnostic: trace the first 5 copy attempts */
@@ -1686,7 +1683,7 @@ static void Cmd_LoadTile(GfxCommand cmd) {
     uint32_t lineWords = (lineBytes + 7) / 8;
     uint32_t texSize = lineBytes * texHeight;
 
-    if (s_rdp.texAddr && texSize <= 4096) {
+    if (s_rdp.texAddr && texSize > 0) {
         uint32_t tmemBase = t.tmemAddr * 8;
 
         /* PORT: Try DKR decompression. ROM textures are compressed with
@@ -3614,9 +3611,19 @@ static void Cmd_Mtx(GfxCommand cmd) {
                     _rb[32],_rb[33],_rb[34],_rb[35], _rb[36],_rb[37],_rb[38],_rb[39]);
               }
             }
-            Matrix_LoadFromN64(&s_dkrMvpSlots[dkr_slot], src);
-            s_dkrActiveSlot = dkr_slot;
-            bka_recompute_matrices();
+            BKMatrix _cand_mtx;
+            Matrix_LoadFromN64(&_cand_mtx, src);
+            float _nz_sum = 0.0f;
+            for (int _mi = 0; _mi < 4; _mi++)
+                for (int _mj = 0; _mj < 4; _mj++)
+                    _nz_sum += fabsf(_cand_mtx[_mi][_mj]);
+            if (_nz_sum > 1e-5f) {
+                for (int _mi = 0; _mi < 4; _mi++)
+                    for (int _mj = 0; _mj < 4; _mj++)
+                        s_dkrMvpSlots[dkr_slot][_mi][_mj] = _cand_mtx[_mi][_mj];
+                s_dkrActiveSlot = dkr_slot;
+                bka_recompute_matrices();
+            }
             static int _sl = 0; if (_sl++ < 12)
                 __android_log_print(ANDROID_LOG_ERROR, "BKA-MTX2",
                     "slot=%d src=%p mvp00=%.4f mvp11=%.4f mvp22=%.4f mvp32=%.2f active=%d",
