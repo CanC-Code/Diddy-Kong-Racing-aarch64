@@ -1246,23 +1246,23 @@ static void TransformVertex(const BKVertex* v, float* sx, float* sy) {
     // When pw <= 0.01f or matrices remain identity, fall back to scaling raw
     // vertex coordinates instead of zeroing ox/oy to (0,0) -> (146.0, 108.0).
     if (!(pw > 0.01f) || (mv_is_id && pj_is_id)) {
-        float denom = fmaxf(1024.0f, fabsf(z) + 512.0f);
+        float denom = fmaxf(16384.0f, fabsf(z) + 16384.0f);
         ox = x / denom;
         oy = y / denom;
         oz = z / denom;
-        if (ox < -16.0f) ox = -16.0f;
-        if (ox >  16.0f) ox =  16.0f;
-        if (oy < -16.0f) oy = -16.0f;
-        if (oy >  16.0f) oy =  16.0f;
+        if (ox < -1.0f) ox = -1.0f;
+        if (ox >  1.0f) ox =  1.0f;
+        if (oy < -1.0f) oy = -1.0f;
+        if (oy >  1.0f) oy =  1.0f;
     } else {
         float inv = 1.0f / pw;
         ox = px * inv;
         oy = py * inv;
         oz = pz * inv;
-        if (ox < -16.0f) ox = -16.0f;
-        if (ox >  16.0f) ox =  16.0f;
-        if (oy < -16.0f) oy = -16.0f;
-        if (oy >  16.0f) oy =  16.0f;
+        if (ox < -1.0f) ox = -1.0f;
+        if (ox >  1.0f) ox =  1.0f;
+        if (oy < -1.0f) oy = -1.0f;
+        if (oy >  1.0f) oy =  1.0f;
     }
 
     // Viewport transform: NDC [-1,1] → screen [0,FB_WIDTH/HEIGHT]
