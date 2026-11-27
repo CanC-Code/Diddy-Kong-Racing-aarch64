@@ -4933,7 +4933,7 @@ if (!g_walker_recover_installed) {
      * interpretations (e.g. w0=0x060000BC -> LE_op=BC, BE_op=06), the
      * detector cannot disambiguate and stride stays wrong for the whole
      * task, producing fake G_DL / G_VTX / Cmd_Polygon with garbage w1. */
-    size_t current_stride = 16;
+    size_t current_stride = 8;
     size_t stack_stride[64];
     uintptr_t stack_dl_base[64];
     int stack_enc[64];          /* per-frame: 0=unknown, 1=LE, 2=BE */
@@ -5829,21 +5829,12 @@ case 0xF5: { static int s_op=0; if (s_op++<4000) __android_log_print(ANDROID_LOG
                      * has stale entries (no TTL) and returns freed-heap
                      * pointers for w1 values that happened to collide with
                      * some matrix ptr from an earlier frame. */
-                    void *_gdl_via_rdp = RDP_TranslateAddr(c.w1);
-                    void *_gdl_t = _gdl_via_rdp;
-                    /* Only fall back to registry if RDP failed, AND the
-                     * registry target is inside RDRAM (registered matrices
-                     * live in RDRAM; arbitrary heap is not a valid G_DL). */
+                    void *_gdl_via_rdp = nullptr;
+                    void *_gdl_t = bka_lookup_addr_by_low32(c.w1);
                     if (!_gdl_t || !bka_is_readable(_gdl_t) ||
-                        !bka_is_readable((void*)((const uint8_t*)_gdl_t + 15))) {
-                        void *_reg = bka_lookup_addr_by_low32(c.w1);
-                        if (_reg && gN64_RDRAM &&
-                            (const uint8_t*)_reg >= gN64_RDRAM &&
-                            (const uint8_t*)_reg <  gN64_RDRAM + 0x1000000 &&
-                            bka_is_readable(_reg) &&
-                            bka_is_readable((void*)((const uint8_t*)_reg + 15))) {
-                            _gdl_t = _reg;
-                        }
+                        !bka_is_readable((void*)((const uint8_t*)_gdl_t + 7))) {
+                        _gdl_via_rdp = RDP_TranslateAddr(c.w1);
+                        _gdl_t = _gdl_via_rdp;
                     }
                     if (!_gdl_t || !bka_is_readable(_gdl_t) ||
                         !bka_is_readable((void*)((const uint8_t*)_gdl_t + 15))) {
