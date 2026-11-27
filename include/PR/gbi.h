@@ -1538,13 +1538,27 @@ typedef union {
 	_SHIFTL((c), 24, 8) | _SHIFTL((l), 0, 24), (unsigned int)(s)	\
 }}
 
+#ifndef _BKA_PACK_PTR_DEFINED
+#define _BKA_PACK_PTR_DEFINED
+#include <stdint.h>
+#ifdef __cplusplus
+extern "C" unsigned int bka_k0_to_phys(void *ptr);
+#else
+extern unsigned int bka_k0_to_phys(void *ptr);
+#endif
+#define _BKA_PACK_PTR(s) \
+    ((sizeof(s) > 4 && (unsigned long long)(uintptr_t)(s) >= 0x100000000ULL) \
+        ? bka_k0_to_phys((void *)(uintptr_t)(s)) \
+        : (unsigned int)(uintptr_t)(s))
+#endif
+
 #define	gDma1p(pkt, c, s, l, p)						\
 {									\
 	Gfx *_g = (Gfx *)(pkt);						\
 									\
 	_g->words.w0 = (_SHIFTL((c), 24, 8) | _SHIFTL((p), 16, 8) |	\
 			_SHIFTL((l), 0, 16));				\
-	_g->words.w1 = (unsigned int)(s);				\
+	_g->words.w1 = _BKA_PACK_PTR(s);				\
 }
 
 #define	gsDma1p(c, s, l, p)						\
@@ -1644,7 +1658,7 @@ typedef union {
 }}
 
 #define gMoveWd(pkt, index, offset, data)				\
-	gImmp21(pkt, G_MOVEWORD, offset, index, data)
+	gImmp21(pkt, G_MOVEWORD, offset, index, _BKA_PACK_PTR(data))
 
 #define gsMoveWd(    index, offset, data)				\
 	gsImmp21(    G_MOVEWORD, offset, index, data)
