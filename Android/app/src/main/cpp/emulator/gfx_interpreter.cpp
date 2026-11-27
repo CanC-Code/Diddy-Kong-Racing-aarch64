@@ -1683,15 +1683,17 @@ static void Cmd_LoadTile(GfxCommand cmd) {
     uint32_t lineWords = (lineBytes + 7) / 8;
     uint32_t texSize = lineBytes * texHeight;
 
-    if (s_rdp.texAddr && texSize > 0) {
+    if (s_rdp.texAddr && texSize > 0 && bka_is_readable(s_rdp.texAddr)) {
         uint32_t tmemBase = t.tmemAddr * 8;
+        if (texHeight > 256) texHeight = 256;
 
         /* PORT: Try DKR decompression. ROM textures are compressed with
            one of: LZSS (0x50 0x10), DEFLATE (0x11 0x72/73), GZIP (0x1F 0x8B). */
         uint8_t* tex_src = s_rdp.texAddr;
         uint8_t* decomp_buf = nullptr;
         uint32_t decomp_size = 0;
-        uint8_t magic0 = tex_src[0], magic1 = tex_src[1];
+        uint8_t magic0 = tex_src[0];
+        uint8_t magic1 = bka_is_readable(tex_src + 1) ? tex_src[1] : 0;
         uint32_t expected_size = 0;
         if ((magic0 == 0x50 && magic1 == 0x10) ||
             (magic0 == 0x11 && (magic1 == 0x72 || magic1 == 0x73))) {
@@ -1739,8 +1741,13 @@ static void Cmd_LoadTile(GfxCommand cmd) {
         for (uint32_t row = 0; row < texHeight; row++) {
             uint32_t srcOffset = row * use_stride;
             uint32_t dstOffset = tmemBase + row * t.line * 8;
-            if (dstOffset + lineBytes <= 4096)
+            if (dstOffset + lineBytes <= 4096 &&
+                bka_is_readable(tex_src + srcOffset) &&
+                (lineBytes == 0 || bka_is_readable(tex_src + srcOffset + lineBytes - 1))) {
                 memcpy(s_rdp.tmem + dstOffset, tex_src + srcOffset, lineBytes);
+            } else {
+                break;
+            }
         { static int s_tdmp = 0; if (s_tdmp++ < 3) {
             FILE* f = fopen("/data/data/com.dkrwrapper/files/lt_dump.bin", "wb");
             if (f) {
