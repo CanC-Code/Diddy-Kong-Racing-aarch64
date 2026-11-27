@@ -2696,13 +2696,14 @@ static void Cmd_Polygon(GfxCommand cmd) {
 
     for (uint32_t i = 0; i < numTris; i++, tri++) {
         uint32_t vi0 = tri->vi0, vi1 = tri->vi1, vi2 = tri->vi2;
-        if (vi0 > 255 || vi1 > 255 || vi2 > 255) continue;
+        uint32_t vtxLimit = (s_rdp.dmemVertexCount > 0 && s_rdp.dmemVertexCount <= 256)
+            ? (uint32_t)s_rdp.dmemVertexCount
+            : 256u;
+        if (vi0 >= vtxLimit || vi1 >= vtxLimit || vi2 >= vtxLimit) continue;
 
-        /* Round 103: vi is a byte offset. vi>>4 gives slot 0-15.
-         * Mask with 0xF to be absolutely safe from OOB. */
-        BKVertex* v0 = &s_rdp.dmem[(vi0 >> 4) & 0xF];
-        BKVertex* v1 = &s_rdp.dmem[(vi1 >> 4) & 0xF];
-        BKVertex* v2 = &s_rdp.dmem[(vi2 >> 4) & 0xF];
+        BKVertex* v0 = &s_rdp.dmem[vi0];
+        BKVertex* v1 = &s_rdp.dmem[vi1];
+        BKVertex* v2 = &s_rdp.dmem[vi2];
 
         {
             static int s_draw = 0;
@@ -5432,7 +5433,7 @@ if (!g_walker_recover_installed) {
                     static uint64_t s_tri_ops = 0;
                     s_hist[opcode]++;
                     s_total++;
-                    if (opcode==0xBF||opcode==0xB1||opcode==0xC4||opcode==0x34) s_tri_ops++;
+                    if (opcode==0x05||opcode==0xBF||opcode==0xB1||opcode==0xC4||opcode==0x34) s_tri_ops++;
                     if ((s_total % 2000) == 0) {
                         uint64_t copy[256];
                         for (int i = 0; i < 256; i++) copy[i] = s_hist[i];
