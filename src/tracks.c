@@ -1941,9 +1941,16 @@ void render_level_segment(s32 segmentId, s32 nonOpaque) {
     s32 endPos;
     s32 batchFlags;
     s32 textureFlags;
-    //! @bug: batchInfo is uninitalized
-    numberVertices = (batchInfo + 1)->verticesOffset - batchInfo->verticesOffset;
+    if (!gCurrentLevelModel || !gCurrentLevelModel->segments) {
+        return;
+    }
+    if (segmentId < 0 || segmentId >= gCurrentLevelModel->numberOfSegments) {
+        return;
+    }
     segment = &gCurrentLevelModel->segments[segmentId];
+    if (!segment->batches) {
+        return;
+    }
     sp78 = (nonOpaque && gWaveBlockCount) ? waves_block_hq(segment) : 0;
     if (nonOpaque) {
         startPos = segment->numberofOpaqueBatches;
@@ -1952,6 +1959,8 @@ void render_level_segment(s32 segmentId, s32 nonOpaque) {
         startPos = 0;
         endPos = segment->numberofOpaqueBatches;
     }
+    if (startPos < 0) startPos = 0;
+    if (endPos > segment->numberOfBatches) endPos = segment->numberOfBatches;
     for (i = startPos; i < endPos; i++) {
         batchInfo = &segment->batches[i];
         textureFlags = RENDER_NONE;
@@ -1965,7 +1974,7 @@ void render_level_segment(s32 segmentId, s32 nonOpaque) {
             texture = FALSE;
         } else {
             texture = gCurrentLevelModel->textures[batchInfo->textureIndex].texture;
-            textureFlags = texture->flags;
+            textureFlags = texture ? texture->flags : RENDER_NONE;
         }
         batchFlags |= RENDER_FOG_ACTIVE | RENDER_Z_COMPARE;
         if (!(batchFlags & RENDER_CUTOUT) && !(batchFlags & RENDER_DECAL)) {
@@ -1983,13 +1992,19 @@ void render_level_segment(s32 segmentId, s32 nonOpaque) {
         if (!renderBatch) {
             continue;
         }
-        numberTriangles = batchInfo->facesOffset;
-        do { // Fakematch
+        if (i + 1 < segment->numberOfBatches) {
             numberVertices = (batchInfo + 1)->verticesOffset - batchInfo->verticesOffset;
-            numberTriangles = (batchInfo + 1)->facesOffset - numberTriangles;
-            vertices = (s32) &segment->vertices[batchInfo->verticesOffset];
-        } while (0);
-        triangles = (s32) &segment->triangles[batchInfo->facesOffset];
+            numberTriangles = (batchInfo + 1)->facesOffset - batchInfo->facesOffset;
+        } else {
+            numberVertices = (s32)segment->numberOfVertices - batchInfo->verticesOffset;
+            numberTriangles = (s32)segment->numberOfTriangles - batchInfo->facesOffset;
+        }
+        if (numberVertices < 0) numberVertices = 0;
+        if (numberTriangles < 0) numberTriangles = 0;
+        void* vtx_host = (void*)&segment->vertices[batchInfo->verticesOffset];
+        void* tri_host = (void*)&segment->triangles[batchInfo->facesOffset];
+        vertices = (s32)(uintptr_t)OS_K0_TO_PHYSICAL(vtx_host);
+        triangles = (s32)(uintptr_t)OS_K0_TO_PHYSICAL(tri_host);
         texOffset = batchInfo->texOffset << 14;
         levelHeaderIndex = (batchFlags >> 28) & 7;
         if (levelHeaderIndex != (batchInfo->verticesOffset * 0)) {
