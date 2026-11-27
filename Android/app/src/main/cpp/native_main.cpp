@@ -406,9 +406,8 @@ Java_com_dkrwrapper_Native_fillArgb(JNIEnv* env, jobject /*thiz*/, jintArray out
     if (nz > 1000) {
         memcpy(g_cache, out, count * sizeof(jint));
         g_cache_valid = 1;
-    } else if (g_cache_valid) {
-        memcpy(out, g_cache, count * sizeof(jint));
     }
+    /* Do not overwrite current frame with stale g_cache when nz <= 1000 */
 
     static int _logctr = 0;
     if ((_logctr++ % 60) == 0 || nz > 1000) {
